@@ -1,12 +1,22 @@
 import os, sys, pickle
 import numpy as np
+
 from datetime import datetime
-from models import *
-from drawTools import *
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, ReduceLROnPlateau
 from sklearn.model_selection import train_test_split
 
+from models import *
+from drawTools import *
+
+def load_data(dataDir):
+    x_data = np.load('%s/x_data.npy'%dataDir)
+    y_data = np.load('%s/y_data.npy'%dataDir)
+    x_test = np.load('%s/x_test.npy'%dataDir)
+    y_test = np.load('%s/y_test.npy'%dataDir)
+    x_train, x_valid, y_train, y_valid = train_test_split(x_data, y_data, test_size=0.2, random_state=11)
+    
+    return x_train, x_valid, x_test, y_train, y_valid, y_test
 
 def train(opt):
     # make save directory
@@ -26,12 +36,10 @@ def train(opt):
         pickle.dump(opt, fw)
     
     # load data
-    x_data = np.load('%s/x_data.npy'%dataDir)
-    y_data = np.load('%s/y_data.npy'%dataDir)
-    x_train, x_valid, y_train, y_valid = train_test_split(x_data, y_data, test_size=0.2, random_state=11)
-   
+    x_train, x_valid, _, y_train, y_valid, _ = load_data(dataDir)
+    
     # load and draw model
-    model = get_model(model)(x_data, 3, 'adam', 'sparse_categorical_crossentropy')
+    model = MODELS[model](x_data, 3, 'adam', 'sparse_categorical_crossentropy')
     plot_model(model, show_shapes=True, to_file='%s/model.png'%saveDir)
     
     # callbacks

@@ -33,6 +33,3 @@ def build_wavenet(x, nclass, optimizer, loss):
 MODELS = {
     'wavenet': build_wavenet,
 }
-
-def get_model(model):
-    return MODELS[model]

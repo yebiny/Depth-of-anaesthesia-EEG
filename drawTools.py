@@ -1,4 +1,9 @@
+import os, sys, pickle
+import numpy as np
+
+import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 
 def draw_lprocess(history, save=None):
     figure=plt.figure()
@@ -26,3 +31,15 @@ def draw_lprocess(history, save=None):
         plt.savefig(save+'_acc')        
     else:
         plt.show()
+
+
+
+def draw_cm(x_data, y_data, model):
+
+    y_pred = model.predict_classes(x_data)
+    cm = confusion_matrix(y_data, y_pred)
+    cm = cm.astype('float')/cm.sum(axis=1)[:, np.newaxis]
+    ax = plt.subplot()
+    sns.heatmap(cm, annot=True, ax = ax)
+    ax.set_xlabel("Pred")
+    ax.set_ylabel("True")
