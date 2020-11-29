@@ -39,7 +39,7 @@ def train(opt):
     x_train, x_valid, _, y_train, y_valid, _ = load_data(dataDir)
     
     # load and draw model
-    model = MODELS[model](x_data, 3, 'adam', 'sparse_categorical_crossentropy')
+    model = MODELS[model](x_train, 3, 'adam', 'sparse_categorical_crossentropy')
     plot_model(model, show_shapes=True, to_file='%s/model.png'%saveDir)
     
     # callbacks
@@ -64,7 +64,6 @@ def main():
     'dataDir' : sys.argv[1],
     'model' : 'wavenet',
     'epochs': 20,
-    #'class_weights' : np.array([0.68741815, 0.68741815, 1]),
     'class_weights' : np.array([0.78, 0.78, 1]),
     'batch_size' : 64,
     }
