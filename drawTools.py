@@ -32,6 +32,18 @@ def draw_lprocess(history, save=None):
     else:
         plt.show()
 
+def draw_multi_hist(data_list, n_row=1, save=None):
+    n_data = len(data_list)
+    plt.figure(figsize=((n_data/n_row)*3, n_row*3))
+    for i, data in enumerate(data_list):
+        plt.subplot(n_row, n_data/n_row, i+1)
+        plt.title(data)
+        plt.hist(data_list[data], color='#9467bd', rwidth=0.9, bins=3, alpha=0.6)
+    
+    if save!=None:
+        plt.savefig(save)
+    else:
+        plt.show()
 
 
 def draw_cm(x_data, y_data, model):

@@ -1,163 +1,179 @@
-import numpy as np
+from drawTools import *
+
 import os, sys, glob
-import matplotlib.pyplot as plt
+import numpy as np
 import random
 from sklearn.preprocessing import StandardScaler
 
 
-def x_flatten(x):
-    x = x.reshape(x.shape[0]*x.shape[1], 1)
-    return x
 
-def draw_x_dist(x_data, save=None):
-    fig = plt.figure(figsize=(6,4))
-    for i in range(2):
-        x = x_flatten(x_data[:,:,i])
-        plt.hist(x, bins=50, alpha=0.4)
-    plt.legend(['ch_1','ch_2'])
-    if save!=None:
-        plt.savefig(save)
-    else: plt.show()
+class DataProcess():
+    def __init__(self, dataDir, test_idx, target_label):
+        
+        # load data 
+        self.xset = np.load('%s/xset.npy'%dataDir)
+        self.yset = np.load('%s/yset.npy'%dataDir)
+        self.idx = np.load('%s/idx.npy'%dataDir)
+        
+        self.test_idx = test_idx
+        self.target_label = target_label
+        
+        self.n_features = self.xset.shape[1]
+        self.idx_list = list(set(self.idx))
+        self.label = self.labeling_y()
+        
+        print(self.xset.shape, self.yset.shape, self.n_features)
 
-def remove_overval(x, limit=100):
-    x1d = x_flatten(x)
-    x1d[x1d>limit]=limit
-    x1d[x1d<-limit]=-limit
-
-    return x1d
-
-def scale_x(x, scaler=None):
-    if scaler==None:
-        scaler = StandardScaler()
-        scaler.fit(x)
-    x_scaled = scaler.transform(x)
-    return x_scaled, scaler
-
-
-def labeling_y(yset):
-
-    yset[yset<40]=0
-    yset[(yset>=40) & (yset<65)]=1
-    yset[yset>=65]=2
-
-    return yset
-
-def balance_data(x_data, y_data, test_size=0.1, n=5000):
-    r = int(max(y_data))
-    # trainset
-    x_split=[]
-    x2 = x_data[y_data==2]
-    for i in range(r):
-        x = x_data[y_data==i]
-        x_balance = np.array(random.sample(list(x), n))
-        x_split.append(x_balance)
-        print('label %i '%i, x.shape, x_balance.shape)
-    print('label 2 :', x2.shape)
-
-    # Final output
-    x_train = np.concatenate((x_split[0], x_split[1], x2), axis=0)
-    y_train = np.array([0 for i in range(n)]+[1 for i in range(n)]+[2 for i in range(len(x2))] )
-
-    return x_train, y_train
-
-
-def trian_process(xset, yset):
-    x_data = []
-    x_scaler=[]
-    print('* input shape: ', xset.shape)
-    features = [xset[:,i] for i in range(xset.shape[1])]
+    def labeling_y(self):
+        y = self.yset
+        y[y<40]=0
+        y[(y>=40) & (y<65)]=1
+        y[y>=65]=2
+        return y
     
-    for f in features:
-        # Remove outliers
-        x = remove_overval(f)
-        # Scale 
-        x, scaler = scale_x(x)
-        # Reshape
-        x = x.reshape((xset.shape[0], 3750, 1))
+    def draw_y_hist(self, r=1, save=None):
+        hist={}
+        for idx in self.idx_list:
+            hist[idx]=self.label[self.idx==idx]
+        draw_multi_hist(hist, r, save=save)
 
-        x_data.append(x)
-        x_scaler.append(scaler)
+    def draw_x_hist(self, x_data, save=None):
+        fig = plt.figure(figsize=(9,3))
+        plt.subplot(1,2,1)
+        for i in range(self.n_features):
+            x = self.xset[:,i,:]
+            x = x.reshape(x.shape[0]*x.shape[1])
+            plt.title('After scaled')
+            plt.hist(x, bins=50, range=(-100, 100), alpha=0.5) 
+        plt.subplot(1,2,2)
+        for i in range(self.n_features):
+            x = x_data[:,:,i]
+            x = x.reshape(x.shape[0]*x.shape[1])
+            plt.title('After scaled')
+            plt.hist(x, bins=50, alpha=0.5) 
+        if save!=None:
+            plt.savefig(save)
+        else: plt.show()
 
-    x_data = np.concatenate((x_data[0], x_data[1]), axis=2)
-    y_data = labeling_y(yset)
+    def train_process(self):
+
+        xtrain = self.xset[self.idx != self.test_idx]
+        features = [xtrain[:,i] for i in range(self.n_features)]
+        # x process
+        x_data, x_scaler = [], []
+        for f in features:
+            # Remove outliers
+            x = self.remove_overx(f)
+            # Scale 
+            x, scaler = self.scale_x(x)
+            # Reshape
+            x = x.reshape((xtrain.shape[0], xtrain.shape[2], 1))
+            x_data.append(x)
+            x_scaler.append(scaler)
+        
+        x_data = np.concatenate((x_data), axis=2)
+        y_data = self.label[self.idx != self.test_idx]
+        
+        # x y balance
+        #x_train, y_train = balance_data(x_train, y_train)
+        return x_data, y_data, x_scaler
     
-    x_train, y_train = balance_data(x_data, y_data)
-    print(x_train.shape, y_train.shape)
     
-    return x_train, y_train, x_scaler
+    def test_process(self, x_scaler):
+        xtest = self.xset[self.idx == self.test_idx]
+        features = [xtest[:,i] for i in range(self.n_features)]
+        # x process
+        x_data = []    
+        for i, f in enumerate(features):
+            # Remove outliers
+            x = self.remove_overx(f)
+            # Scale 
+            x = x_scaler[i].transform(x)        
+            # Reshape
+            x = x.reshape((xtest.shape[0], xtest.shape[2], 1))
+            x_data.append(x)
+        
+        x_data = np.concatenate((x_data), axis=2)
+        y_data = self.label[self.idx == self.test_idx]
+        
+        return x_data, y_data
 
-
-def test_process(xset, yset, x_scaler):
-    print(xset.shape, yset.shape)
-    x_data = []    
-    features = [xset[:,i] for i in range(xset.shape[1])]
-    for i, f in enumerate(features):
-        # Remove outliers
-        x = remove_overval(f)
-        # Scale 
-        x = x_scaler[i].transform(x)        
-        # Reshape
-        x = x.reshape((xset.shape[0], 3750, 1))
-        x_data.append(x)
-
-    x_test = np.concatenate((x_data[0], x_data[1]), axis=2)
-    y_test = labeling_y(yset)
-    print(x_test.shape, y_test.shape)
     
-    return x_test, y_test
+    def remove_overx(self, x, limit=100):
+        x1d = x.reshape(x.shape[0]*x.shape[1], 1)
+        x1d[x1d>limit]=limit
+        x1d[x1d<-limit]=-limit
+    
+        return x1d
+    
+    def scale_x(self, x, scaler=None):
+        if scaler==None:
+            scaler = StandardScaler()
+            scaler.fit(x)
+        x_scaled = scaler.transform(x)
+        return x_scaled, scaler
+
+    def balance_data(self, x_data, y_data, n=5000):
+
+        label_list = list(set(y_data))
+        print(label_list, 'target label is: ', self.target_label)
+
+        x_out, y_out=[], []
+        for label in label_list:
+            if label==self.target_label:
+                x_balance = x_data[y_data==self.target_label]
+                y_balance = [label for i in range(len(x_balance))]
+            else:
+                x_balance = x_data[y_data==label]
+                x_balance = np.array(random.sample(list(x_balance), n))
+                y_balance = [label for i in range(n)]
+            x_out.append(x_balance)
+            y_out.append(y_balance)
+
+        # Final output
+        x_data = np.concatenate((x_out), axis=0)
+        y_data = np.concatenate((y_out), axis=0)
+
+        return x_data, y_data
 
 
-def draw_multihist(plots, w, save=None):
-
-    h = len(plots)/w
-    plt.figure(figsize=(w*3,h*3))
-    for i, p in enumerate(plots):
-        plt.subplot(h,w,i+1)
-        plt.title(p)
-        plt.hist(plots[p], facecolor='#9467bd', bins=3, rwidth=0.9, alpha=0.6)  
-          
-    if save!=None:
-        plt.savefig(save) 
-    else: plt.show()
 
 
 def main():
-    # options
-    eegDir = sys.argv[1]
-    nDir = len(glob.glob('0-data/res_process/eeg1/data*'))   
-    outDir= '%s/data%i'%(eegDir,nDir)
-    
-    # save log
-    if not os.path.isdir(outDir): os.mkdir(outDir)
-    sys.stdout = open('%s/log.txt'%outDir,'w')
-    print('input: %s, output: %s'%(eegDir, outDir))
-   
-    # process
-    xset = np.load('%s/xset.npy'%eegDir)
-    yset = np.load('%s/yset.npy'%eegDir)
-    ntest = len(xset)-1480
-    print(xset.shape, yset.shape)
-    
-    x_data, y_data, x_scaler = trian_process(xset[:ntest], yset[:ntest] )
-    x_test, y_test = test_process(xset[ntest:], yset[ntest:], x_scaler)
-    x_train, x_valid, y_train, y_valid = train_test_split(x_data, y_data, test_size=0.2, random_state=99)
-  
-    # save process results
-    np.save('%s/x_data'%outDir, x_data)
-    np.save('%s/y_data'%outDir, y_data)
-    np.save('%s/x_test'%outDir, x_test)
-    np.save('%s/y_test'%outDir, y_test)
-    np.save('%s/x_scaler'%outDir, x_scaler)
+    dataDir = sys.argv[1]
+    saveDir = sys.argv[2]
+    if not os.path.isdir(saveDir): os.mkdir(saveDir)
+    else: 
+        print('! Already exist')
+        exit()
 
-    # draw images
-    draw_multihist({ 'org':y_data,
-                    'train':y_train,
-                    'valid':y_valid,
-                    'test': y_test}, 
-                    w=4, save='%s/plot_classes'%outDir)
-    
-    draw_x_dist(x_data, save='%s/plot_trainDist'%outDir)
-    draw_x_dist(x_test, save='%s/plot_testDist'%outDir)
 
-if __name__=='__main__':
+    TEST_IDX = 19
+    TARGET_LABEL = 2
+    DP = DataProcess(dataDir, TEST_IDX, TARGET_LABEL)
+
+    # start data process 
+    x_data, y_data, x_scaler = DP.train_process()
+    print('* Train process: ', x_data.shape, y_data.shape)
+    
+    x_train, y_train = DP.balance_data(x_data, y_data)
+    print('* Balance trainset', x_train.shape, y_train.shape)
+    
+    x_test, y_test = DP.test_process(x_scaler)
+    print('* Test process: ', x_test.shape, y_test.shape)
+
+    # draw histograms
+    DP.draw_y_hist(4,'%s/plot_idxlabel'%saveDir )
+    DP.draw_x_hist(x_data, save='%s/plot_datadist'%saveDir)
+    draw_multi_hist({'org': y_data, 'train': y_train, 'test': y_test},
+                     save='%s/plot_datalabel'%saveDir)
+    # save data 
+    np.save('%s/x_data'%saveDir, x_data)
+    np.save('%s/y_data'%saveDir, y_data)
+    np.save('%s/x_test'%saveDir, x_test)
+    np.save('%s/y_test'%saveDir, y_test)
+    np.save('%s/x_scaler'%saveDir, x_scaler)
+
+
+if __name__ == '__main__':
     main()
