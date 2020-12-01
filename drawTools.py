@@ -45,13 +45,20 @@ def draw_multi_hist(data_list, n_row=1, save=None):
     else:
         plt.show()
 
+def draw_cm(y_true, y_pred, ax, title='Confusion matrix'):    
+     cm = confusion_matrix(y_true, y_pred)
+     cm = cm.astype('float')/cm.sum(axis=1)[:, np.newaxis]
+     sns.heatmap(cm, annot=True, ax = ax)
+     plt.title(title)
+     buttom, top = ax.get_ylim()
+     ax.set_xlabel("Pred")
+     ax.set_ylabel("True")
+     ax.set_ylim(buttom+0.5, top-0.5)
 
-def draw_cm(x_data, y_data, model):
-
-    y_pred = model.predict_classes(x_data)
-    cm = confusion_matrix(y_data, y_pred)
-    cm = cm.astype('float')/cm.sum(axis=1)[:, np.newaxis]
-    ax = plt.subplot()
-    sns.heatmap(cm, annot=True, ax = ax)
-    ax.set_xlabel("Pred")
-    ax.set_ylabel("True")
+def draw_response(sig, bkg, title='Response'):
+    plt.title(title)
+    kwargs = dict(histtype='stepfilled', alpha=0.4, density=True, bins=25)
+    plt.hist(sig, **kwargs, edgecolor='b')
+    plt.hist(bkg, **kwargs, edgecolor='r')
+    plt.legend(['awake', 'anaesthesia'], loc='upper center')
+    

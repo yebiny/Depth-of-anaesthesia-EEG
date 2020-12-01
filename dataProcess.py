@@ -26,9 +26,9 @@ class DataProcess():
 
     def labeling_y(self):
         y = self.yset
-        y[y<40]=0
-        y[(y>=40) & (y<65)]=1
-        y[y>=65]=2
+        y[y<65]=0
+        #y[(y>=40) & (y<65)]=1
+        y[y>=65]=1
         return y
     
     def draw_y_hist(self, r=1, save=None):
@@ -149,7 +149,7 @@ def main():
 
 
     TEST_IDX = 19
-    TARGET_LABEL = 2
+    TARGET_LABEL = 1
     DP = DataProcess(dataDir, TEST_IDX, TARGET_LABEL)
 
     # start data process 
@@ -168,8 +168,8 @@ def main():
     draw_multi_hist({'org': y_data, 'train': y_train, 'test': y_test},
                      save='%s/plot_datalabel'%saveDir)
     # save data 
-    np.save('%s/x_data'%saveDir, x_data)
-    np.save('%s/y_data'%saveDir, y_data)
+    np.save('%s/x_data'%saveDir, x_train)
+    np.save('%s/y_data'%saveDir, y_train)
     np.save('%s/x_test'%saveDir, x_test)
     np.save('%s/y_test'%saveDir, y_test)
     np.save('%s/x_scaler'%saveDir, x_scaler)

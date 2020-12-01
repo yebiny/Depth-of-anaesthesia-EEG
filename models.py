@@ -12,7 +12,7 @@ def load_data(dataDir):
     
     return x_train, x_valid, x_test, y_train, y_valid, y_test
 
-def build_wavenet(x, nclass, optimizer, loss):
+def build_wavenet(x, optimizer, loss='sparse_categorical_crossentropy'):
     
     xshape= x.shape
 
@@ -31,18 +31,45 @@ def build_wavenet(x, nclass, optimizer, loss):
     
    
     # Last layer - for label
-    model.add(layers.Conv1D(nclass, 10, padding='same'))
+    model.add(layers.Conv1D(3, 10, padding='same'))
     model.add(layers.AveragePooling1D(10, padding='same'))
-    model.add(layers.Reshape((nclass, )))
+    model.add(layers.Reshape((3, )))
     model.add(layers.Activation('softmax'))
     
     model.compile(optimizer, loss, metrics=['accuracy'])    
     
     return model
 
+def build_wavenet_bn(x, optimizer, loss='binary_crossentropy'):
+    
+    xshape= x.shape
+
+    model = models.Sequential()
+    model.add(layers.InputLayer(input_shape=[xshape[1], xshape[2]]))
+    
+    for rate in (1,2,4,8):
+        model.add(layers.Conv1D(filters=20, kernel_size=2, 
+                                padding='causal', activation='relu', dilation_rate=rate))
+    
+    model.add(layers.AveragePooling1D(50, padding='same'))
+    model.add(layers.Conv1D(20, 100, padding='same', activation='relu'))
+    
+    model.add(layers.Conv1D(1, 100, padding='same', activation='relu'))
+    model.add(layers.AveragePooling1D(10, padding='same'))
+    
+   
+    # Last layer - for label
+    model.add(layers.Conv1D(1, 10, padding='same'))
+    model.add(layers.AveragePooling1D(10, padding='same'))
+    model.add(layers.Reshape((1, )))
+    model.add(layers.Activation('sigmoid'))
+    
+    model.compile(optimizer, loss, metrics=['accuracy'])    
+    return model    
 
 MODELS = {
     'wavenet': build_wavenet,
+    'wavenet_bn': build_wavenet_bn,
 }
 
 
@@ -55,7 +82,7 @@ def main():
     x_train, x_valid, _, y_train, y_valid, _ = load_data(dataDir)
     
     # load and draw model
-    model = MODELS[model_name](x_train, 3, 'adam', 'sparse_categorical_crossentropy')
+    model = MODELS[model_name](x_train, 'adam')
     model.summary()
 
 if __name__=='__main__':
