@@ -67,6 +67,24 @@ class EVAL():
             plt.savefig(save)
         else: plt.show()
 
+    def draw_roc(self, save=None):
+        
+        plt.figure(figsize=(12,5))
+        
+        ax = plt.subplot(1,2,1)
+        y_pred = self.model.predict(self.x_valid)
+        fpr, tpr, _ = metrics.roc_curve(self.y_valid , y_pred[:, 0])
+        draw_roc(fpr, tpr, ax, title='ROC curve, validset')
+        
+        ax = plt.subplot(1,2,2)
+        y_pred = self.model.predict(self.x_test)
+        fpr, tpr, _ = metrics.roc_curve(self.y_test , y_pred[:, 0])
+        draw_roc(fpr, tpr, ax, title='ROC curve, testset')
+        
+        if save!=None:
+            plt.savefig(save)
+        else: plt.show()
+
 def main():
     modelDir = sys.argv[1]
     sys.stdout = open('%s/log.txt'%modelDir,'w')
@@ -75,6 +93,7 @@ def main():
     ev.draw_cm('%s/plot_cm'%modelDir)    
     if ev.model.output.shape[1] == 1:
         ev.draw_response('%s/plot_response'%modelDir)
+        ev.draw_roc('%s/plot_roc'%modelDir)
 
 if __name__=='__main__':
     main()

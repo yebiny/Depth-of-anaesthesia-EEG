@@ -3,7 +3,10 @@ import numpy as np
 
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
+from matplotlib.lines import Line2D
+from sklearn import metrics
+
+
 
 def draw_lprocess(history, save=None):
     figure=plt.figure()
@@ -46,7 +49,7 @@ def draw_multi_hist(data_list, n_row=1, save=None):
         plt.show()
 
 def draw_cm(y_true, y_pred, ax, title='Confusion matrix'):    
-     cm = confusion_matrix(y_true, y_pred)
+     cm = metrics.confusion_matrix(y_true, y_pred)
      cm = cm.astype('float')/cm.sum(axis=1)[:, np.newaxis]
      sns.heatmap(cm, annot=True, ax = ax)
      plt.title(title)
@@ -61,4 +64,20 @@ def draw_response(sig, bkg, title='Response'):
     plt.hist(sig, **kwargs, edgecolor='b')
     plt.hist(bkg, **kwargs, edgecolor='r')
     plt.legend(['awake', 'anaesthesia'], loc='upper center')
-    
+
+def draw_roc(fpr, tpr, ax, title = 'ROC Curve'):
+    tnr = 1-fpr
+    auc = metrics.auc(x=tpr, y=tnr)
+
+    # plot
+    roc_curve = Line2D(
+        xdata=tpr, ydata=tnr,
+        label="RNN (AUC = {:.3f})".format(auc),
+        color='darkorange', alpha=0.8, lw=3)
+
+    ax.add_line(roc_curve)
+    ax.set_xlabel('True Positive Rates (Signal Efficiency)',fontsize=12)
+    ax.set_ylabel('True Negative Rates (Background Rejection)', fontsize=12)
+    ax.grid()
+    ax.legend()
+    ax.set_title(title,fontsize=15)    

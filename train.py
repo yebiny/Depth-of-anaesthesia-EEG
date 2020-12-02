@@ -4,6 +4,7 @@ import numpy as np
 from datetime import datetime
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, ReduceLROnPlateau
+from tensorflow.keras.models import load_model
 
 from models import *
 from drawTools import *
@@ -32,7 +33,10 @@ def train(opt):
     print(x_train.shape, y_train.shape)
 
     # load and draw model
-    model = MODELS[model_name](x_train, activation)
+    
+    if model_name in MODELS:
+        model = MODELS[model_name](x_train, activation)
+    else:  model = load_model(model_name)
     plot_model(model, show_shapes=True, to_file='%s/model.png'%saveDir)
     
     # callbacks
@@ -55,8 +59,8 @@ def train(opt):
 def main():
     opt={
     'dataDir' : sys.argv[1],
-    'model_name' : 'wavenet_bn',
-    'epochs': 20,
+    'model_name' : sys.argv[2],
+    'epochs': 50,
     'class_weights' : np.array([0.74, 1]),
     'batch_size' : 64,
     'activation' : 'adam'
