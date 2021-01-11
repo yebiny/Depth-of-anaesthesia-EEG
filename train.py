@@ -33,7 +33,6 @@ def train(opt):
     print(x_train.shape, y_train.shape)
 
     # load and draw model
-    
     if model_name in MODELS:
         model = MODELS[model_name](x_train, activation)
     else:  model = load_model(model_name)
