@@ -1,5 +1,6 @@
 import os, sys, glob
 import numpy as np
+import argparse
 import h5py
 import matplotlib.pyplot as plt
 from scipy import signal
@@ -101,25 +102,36 @@ class EEGProcess():
             if i%200==0: print(i)
         outs = np.array(outs)
         return outs
-    
 
-def main():
-    dataDir = sys.argv[1]
-    saveDir = sys.argv[2]
-    if not os.path.isdir(saveDir): os.mkdir(saveDir)
+def parse_args():
+    opt = argparse.ArgumentParser(description="==== EEG, BIS raw signal process ====")
+    opt.add_argument(dest='data_path', type=str, help=': data directory ')
+    opt.add_argument(dest='save_path', type=str, help=': set save directory ')
+    opt.add_argument('-s',  dest='second', type=int, default=125, 
+                    help='data point per second (default: 125)')
+    opt.add_argument('-w',  dest='window_size', type=int, default=625, 
+                    help='window size for eeg (default: 625)')
+    
+    args = opt.parse_args()
+
+    return args
+
+def check_args(args):
+    if not os.path.isdir(args.save_path): os.mkdir(args.save_path)
     else: 
         print('! Already exist')
         exit()
 
-    SECOND = 125
-    WINDOW_SIZE = 10*SECOND
+def main():
+    args = parse_args()    
+    check_args(args)
 
-    EP = EEGProcess(dataDir, SECOND, WINDOW_SIZE)
-    xset, yset, idx = EP.process(EP.n_files)
+    ep = EEGProcess(args.data_path, args.second, args.window_size)
+    xset, yset, idx = ep.process(ep.n_files)
 
-    np.save('%s/xset'%saveDir, xset)
-    np.save('%s/yset'%saveDir, yset)
-    np.save('%s/idx'%saveDir, idx)
+    np.save('%s/xset'%args.save_path, xset)
+    np.save('%s/yset'%args.save_path, yset)
+    np.save('%s/idx'%args.save_path, idx)
 
 
 if __name__ == '__main__':
