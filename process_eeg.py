@@ -128,6 +128,7 @@ def main():
 
     ep = EEGProcess(args.data_path, args.second, args.window_size)
     xset, yset, idx = ep.process(ep.n_files)
+    print(xset.shape, yset.shape, idx.shape)
 
     np.save('%s/xset'%args.save_path, xset)
     np.save('%s/yset'%args.save_path, yset)
