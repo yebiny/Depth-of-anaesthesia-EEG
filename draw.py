@@ -36,7 +36,8 @@ def draw_lprocess(history, save=None):
 
 def draw_multi_hist(data_list, n_row=1, save=None):
     n_data = len(data_list)
-    plt.figure(figsize=((n_data/n_row)*3, n_row*3))
+    print('ndata: ', n_data)
+    plt.figure(figsize=(int(n_data/n_row)*3, n_row*3))
     for i, data in enumerate(data_list):
         plt.subplot(n_row, n_data/n_row, i+1)
         plt.title(data)

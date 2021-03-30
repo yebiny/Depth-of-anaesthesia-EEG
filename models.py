@@ -1,16 +1,7 @@
 import os, sys, glob
 import numpy as np
-from tensorflow.keras import layers, models
+from tensorflow.keras import layers, models, optimizers
 from sklearn.model_selection import train_test_split
-
-def load_data(dataDir):
-    x_data = np.load('%s/x_data.npy'%dataDir)
-    y_data = np.load('%s/y_data.npy'%dataDir)
-    x_test = np.load('%s/x_test.npy'%dataDir)
-    y_test = np.load('%s/y_test.npy'%dataDir)
-    x_train, x_valid, y_train, y_valid = train_test_split(x_data, y_data, test_size=0.2, random_state=11)
-    
-    return x_train, x_valid, x_test, y_train, y_valid, y_test
 
 def build_wavenet(x, optimizer, loss='sparse_categorical_crossentropy'):
     
@@ -33,8 +24,6 @@ def build_wavenet(x, optimizer, loss='sparse_categorical_crossentropy'):
     # Last layer - for label
     model.add(layers.Conv1D(3, 10, padding='same'))
     model.add(layers.AveragePooling1D(10, padding='same'))
-    model.add(layers.Reshape((3, )))
-    model.add(layers.Activation('softmax'))
     
     model.compile(optimizer, loss, metrics=['accuracy'])    
     
@@ -67,9 +56,38 @@ def build_wavenet_bn(x, optimizer, loss='binary_crossentropy'):
     model.compile(optimizer, loss, metrics=['accuracy'])    
     return model    
 
+def wavenet_regression(xshape, optimizer):
+    x = layers.Input(shape=xshape)
+    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=1)(x)
+    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=2)(y)
+    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=4)(y)
+    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=8)(y)
+
+    y = layers.AveragePooling1D(50, padding='same')(y)
+    y = layers.Conv1D(20, 100, padding='same', activation='relu')(y)
+
+    y = layers.Conv1D(10, 100, padding='same', activation='relu')(y)
+    y = layers.AveragePooling1D(100, padding='same')(y)
+    
+    # Last layer - for label
+    y = layers.Conv1D(10, 10, padding='same')(y)
+    y = layers.AveragePooling1D(10, padding='same')(y)
+    y = layers.Reshape((10, ))(y)
+    
+    y = layers.Dense(10, activation='relu')(y)
+    y = layers.Dense(1)(y) 
+    
+    model = models.Model(x, y)
+    model.compile(optimizer, 'mse', metrics=['mse', 'mae'])
+
+    return model
+
+
+
 MODELS = {
     'wavenet': build_wavenet,
     'wavenet_bn': build_wavenet_bn,
+    'regression': wavenet_regression,
 }
 
 

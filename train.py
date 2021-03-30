@@ -1,75 +1,92 @@
-import os, sys, pickle
-import numpy as np
-import argparse
+import os, sys, pickle, argparse
 from datetime import datetime
+import numpy as np
 from tensorflow.keras.utils import plot_model
-from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, ReduceLROnPlateau
+from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, ReduceLROnPlateau, EarlyStopping
 from tensorflow.keras.models import load_model
+from sklearn.model_selection import train_test_split
 
 from models import *
-from drawTools import *
+from draw import *
 
-def train(args):
-    # make save directory
+def save_option(args, save_path):
+    log='''
+    data_dir : {d}
+    model_name : {m}
+    epochs : {e}
+    batch_size : {b}
+    optimizer  : {o}
+    '''.format( d=args.data_path
+              , m=args.model_name
+              , e=args.epochs
+              , b=args.batch_size
+              , o=args.optimizer)
+    
+    with open('%s/option.txt'%save_path, 'w') as f:
+        f.write(log)
+    
+
+def set_save_directory():
     date = datetime.today().strftime("%Y_%m%d_%H%M")
     save_path= './results/%s'%date
+    if not os.path.isdir('results'): os.mkdir('results')
     if not os.path.isdir(save_path): os.mkdir(save_path)
+    return save_path
+
+def get_model(model_name, x_train):
+    return model
+
+def set_callbacks(save_path):
+    reduce_lr  = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-5)
+    checkpoint = ModelCheckpoint("%s/model.h5"%save_path, save_best_only=True)
+    early_stop = EarlyStopping(monitor='val_loss', patience=8)
     
+    return [reduce_lr, checkpoint, early_stop]
+
+def load_data(data_path, rs=34):
+    x_data = np.load("%s/x_data.npy"%data_path)
+    y_data = np.load("%s/y_data.npy"%data_path)
+    l_data = np.load("%s/l_data.npy"%data_path)
+    
+    x, xv, y, yv = train_test_split(x_data, y_data, test_size=0.2, shuffle=True, random_state=rs)
+    _, _, l, lv = train_test_split(x_data, l_data, test_size=0.2, shuffle=True, random_state=rs)
+    return x, xv, y, yv, l, lv
+
+def train(args):
+    save_path = set_save_directory() 
     save_option(args, save_path)
     
-    #with open('%s/opt.pickle'%save_path,'wb') as fw:
-    #    pickle.dump(opt, fw)
-    
     # load data
-    x_train, x_valid, _, y_train, y_valid, _ = load_data(args.data_path)
-    print(x_train.shape, y_train.shape)
+    x_train, x_valid, y_train, y_valid, l_train, l_valid = load_data(args.data_path)
+    print('trainset: ', x_train.shape, y_train.shape, l_train.shape)
+    print('validset: ', x_valid.shape, y_valid.shape, l_valid.shape)
 
-    # load and draw model
+    # load model
     if args.model_name in MODELS:
-        model = MODELS[args.model_name](x_train, args.activation)
-    else:  model = load_model(args.model_name)
+          model = MODELS[args.model_name](x_train.shape[1:], args.optimizer)
+    else: model = load_model(model_name)
     plot_model(model, show_shapes=True, to_file='%s/model.png'%save_path)
-    
-    # callbacks
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-5)
-    model_checkpoint_cb = ModelCheckpoint("%s/model.h5"%save_path, save_best_only=True)
-    
+
     # train
+    callbacks = set_callbacks(save_path)
     history = model.fit(x_train, y_train ,
                         batch_size=args.batch_size, epochs=args.epochs,
                         validation_data=(x_valid, y_valid),
-                        class_weight=np.array([args.class_weights, 1]),
-                        callbacks = [model_checkpoint_cb, reduce_lr]
-    
-    )
+                        #class_weight=np.array([args.class_weights, 1]),
+                        callbacks = callbacks
+                       )
 
     # draw learning process
     draw_lprocess(history, save='%s/plot_lprocess'%save_path)
 
-def save_option(args, save_path):
-    opt={
-    'dataDir' : args.data_path,
-    'model_name' : args.model_name,
-    'epochs': args.epochs,
-    'class_weights' : np.array([args.class_weights, 1]),
-    'batch_size' : args.batch_size,
-    'activation' : args.activation
-    }
-    # save options
-    f = open("%s/opt.txt"%save_path, "w")
-    for o in opt:
-        f.write(o, opt[o])
-    f.close()
-    print(opt)
 
 def parse_args():
     opt = argparse.ArgumentParser(description="==== Training ====")
     opt.add_argument(dest='data_path', type=str, help=': data directory ')
     opt.add_argument(dest='model_name', type=str, help=': select model ')
     opt.add_argument('-e', dest='epochs', type=int, default=50, help=': epochs(default: 50)')
-    opt.add_argument('-b', dest='batch_size', type=int, default=64, help=': batch_size(default: 64)') 
-    opt.add_argument('-w', dest='class_weights', type=float, default=0.74, help=': weight for zero(default: 0.74)')
-    opt.add_argument('-a', dest='activation', type=str, default='adam', help=': activation(default: adam)')
+    opt.add_argument('-b', dest='batch_size', type=int, default=16, help=': batch_size(default: 16)') 
+    opt.add_argument('-o', dest='optimizer', type=str, default='adam', help=': optimzier(default: adam)')
     args = opt.parse_args()
 
     return args
