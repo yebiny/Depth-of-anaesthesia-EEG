@@ -3,12 +3,10 @@ import numpy as np
 from tensorflow.keras import layers, models, optimizers
 from sklearn.model_selection import train_test_split
 
-def build_wavenet(x, optimizer, loss='sparse_categorical_crossentropy'):
+def wavenet_class(xshape, optimizer):
     
-    xshape= x.shape
-
     model = models.Sequential()
-    model.add(layers.InputLayer(input_shape=[xshape[1], xshape[2]]))
+    model.add(layers.Input(shape=xshape))
     
     for rate in (1,2,4,8):
         model.add(layers.Conv1D(filters=20, kernel_size=2, 
@@ -22,16 +20,17 @@ def build_wavenet(x, optimizer, loss='sparse_categorical_crossentropy'):
     
    
     # Last layer - for label
-    model.add(layers.Conv1D(3, 10, padding='same'))
+    model.add(layers.Conv1D(4, 10, padding='same'))
     model.add(layers.AveragePooling1D(10, padding='same'))
-    
+    model.add(layers.Reshape((4, )))
+    model.add(layers.Activation('softmax'))
+
+    loss='sparse_categorical_crossentropy'
     model.compile(optimizer, loss, metrics=['accuracy'])    
     
     return model
 
-def build_wavenet_bn(x, optimizer, loss='binary_crossentropy'):
-    
-    xshape= x.shape
+def wavenet_class_binary(xshape, optimizer):
 
     model = models.Sequential()
     model.add(layers.InputLayer(input_shape=[xshape[1], xshape[2]]))
@@ -45,7 +44,6 @@ def build_wavenet_bn(x, optimizer, loss='binary_crossentropy'):
     
     model.add(layers.Conv1D(1, 100, padding='same', activation='relu'))
     model.add(layers.AveragePooling1D(10, padding='same'))
-    
    
     # Last layer - for label
     model.add(layers.Conv1D(1, 10, padding='same'))
@@ -53,6 +51,7 @@ def build_wavenet_bn(x, optimizer, loss='binary_crossentropy'):
     model.add(layers.Reshape((1, )))
     model.add(layers.Activation('sigmoid'))
     
+    loss='binary_crossentropy'
     model.compile(optimizer, loss, metrics=['accuracy'])    
     return model    
 
@@ -85,8 +84,8 @@ def wavenet_regression(xshape, optimizer):
 
 
 MODELS = {
-    'wavenet': build_wavenet,
-    'wavenet_bn': build_wavenet_bn,
+    'class': wavenet_class,
+    'class_bn': wavenet_class_binary,
     'regression': wavenet_regression,
 }
 

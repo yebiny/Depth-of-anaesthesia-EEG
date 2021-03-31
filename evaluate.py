@@ -1,99 +1,68 @@
 import os, sys, pickle
 import numpy as np
-
-from drawTools import *
+import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 from sklearn.model_selection import train_test_split
-
+from sklearn import metrics
+import seaborn as sns
 class EVAL():
     
-    def __init__(self, modelDir):
+    def __init__(self, model_path, data_path):
 
-        with open('%s/opt.pickle'%modelDir, 'rb') as fr:
-            opt = pickle.load(fr)
-        print(opt)
-        self.dataDir = opt['dataDir']
-        self.modelDir = modelDir
-
-        self.model =  load_model("%s/model.h5"%modelDir)
-        _, self.x_valid, self.x_test, _, self.y_valid, self.y_test = self.load_data()
+        self.model =  load_model("%s/model.h5"%model_path)
+        self.data_path = data_path
 
     def load_data(self):
-        x_data = np.load('%s/x_data.npy'%self.dataDir)
-        y_data = np.load('%s/y_data.npy'%self.dataDir)
-        x_test = np.load('%s/x_test.npy'%self.dataDir)
-        y_test = np.load('%s/y_test.npy'%self.dataDir)
-        x_train, x_valid, y_train, y_valid = train_test_split(x_data, y_data, test_size=0.2, random_state=11)
-        return x_train, x_valid, x_test, y_train, y_valid, y_test
+        x_data = np.load('%s/x_data.npy'%self.data_path)
+        l_data = np.load('%s/l_data.npy'%self.data_path)
+        x_test = np.load('%s/x_test.npy'%self.data_path)
+        l_test = np.load('%s/l_test.npy'%self.data_path)
+        _, x_valid, _, l_valid = train_test_split(x_data, l_data, test_size=0.2, random_state=34)
+        return x_valid, x_test, l_valid, l_test
 
-    def draw_cm(self, save=None):
+    def _draw_cm(self, y_true, y_pred, ax, title='Confusion matrix'):
+        cm = metrics.confusion_matrix(y_true, y_pred)
+        cm = cm.astype('float')/cm.sum(axis=1)[:, np.newaxis]
+        sns.heatmap(cm, annot=True, ax = ax)
+        plt.title(title)
+        buttom, top = ax.get_ylim()
+        ax.set_xlabel("Pred")
+        ax.set_ylabel("True")
+        ax.set_ylim(buttom+0.5, top-0.5)
+
+    def draw_multi_cm(self, save=None):
+        
+        x_valid, x_test, l_valid, l_test = self.load_data()
 
         plt.figure(figsize=(12,4))
         
-        y_pred = self.model.predict_classes(self.x_valid)
+        l_pred = self.model.predict_classes(x_valid)
         ax = plt.subplot(1,2,1)
-        draw_cm(self.y_valid, y_pred, ax, title='validset')
+        self._draw_cm(l_valid, l_pred, ax, title='Valid set')
         
-        y_pred = self.model.predict_classes(self.x_test)
+        l_pred = self.model.predict_classes(x_test)
         ax = plt.subplot(1,2,2)
-        draw_cm(self.y_test, y_pred, ax, title='testset' )
+        self._draw_cm(l_test, l_pred, ax, title='Test set' )
         
         if save!=None:
             plt.savefig(save)
         else: plt.show()
         plt.close('all')
 
-    def get_response(self, x_data, y_data):
-        
-        y_pred = self.model.predict(x_data)
-        is_sig = y_data.astype(np.bool)
-        is_bkg = np.logical_not(y_data)
-        pred_true = y_pred[is_sig]
-        pred_false= y_pred[is_bkg]
-        
-        return pred_true, pred_false
-
-    def draw_response(self, save=None):
-        
-        v_true, v_false = self.get_response(self.x_valid, self.y_valid)
-        t_true, t_false = self.get_response(self.x_test, self.y_test) 
-
-        plt.figure(figsize=(12,4))
-        plt.subplot(1,2,1)
-        draw_response(v_true, v_false, title='validset')
-        plt.subplot(1,2,2)
-        draw_response(t_true, t_false, title='testset')
-        if save!=None:
-            plt.savefig(save)
-        else: plt.show()
-
-    def draw_roc(self, save=None):
-        
-        plt.figure(figsize=(12,5))
-        
-        ax = plt.subplot(1,2,1)
-        y_pred = self.model.predict(self.x_valid)
-        fpr, tpr, _ = metrics.roc_curve(self.y_valid , y_pred[:, 0])
-        draw_roc(fpr, tpr, ax, title='ROC curve, validset')
-        
-        ax = plt.subplot(1,2,2)
-        y_pred = self.model.predict(self.x_test)
-        fpr, tpr, _ = metrics.roc_curve(self.y_test , y_pred[:, 0])
-        draw_roc(fpr, tpr, ax, title='ROC curve, testset')
-        
-        if save!=None:
-            plt.savefig(save)
-        else: plt.show()
-
 def main():
-    modelDir = sys.argv[1]
-    sys.stdout = open('%s/log.txt'%modelDir,'w')
+    model_path = sys.argv[1]
+    with open('%s/opt.pickle'%model_path, 'rb') as fr:
+        opt = pickle.load(fr)
+    data_path = opt['data_path']
+    sys.stdout = open('%s/log.txt'%model_path,'w')
+    print(opt)
     
-    ev = EVAL(modelDir)
-    ev.draw_cm('%s/plot_cm'%modelDir)    
+    ev = EVAL(model_path, data_path)
+    ev.draw_multi_cm('%s/plot_cm'%model_path)    
     if ev.model.output.shape[1] == 1:
-        ev.draw_response('%s/plot_response'%modelDir)
-        ev.draw_roc('%s/plot_roc'%modelDir)
+        ev.draw_response('%s/plot_response'%model_path)
+        ev.draw_roc('%s/plot_roc'%model_path)
+    
 
 if __name__=='__main__':
     main()

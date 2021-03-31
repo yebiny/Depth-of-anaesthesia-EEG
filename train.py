@@ -1,4 +1,4 @@
-import os, sys, pickle, argparse
+import os, sys, pickle, argparse, ast
 from datetime import datetime
 import numpy as np
 from tensorflow.keras.utils import plot_model
@@ -9,39 +9,12 @@ from sklearn.model_selection import train_test_split
 from models import *
 from draw import *
 
-def save_option(args, save_path):
-    log='''
-    data_dir : {d}
-    model_name : {m}
-    epochs : {e}
-    batch_size : {b}
-    optimizer  : {o}
-    '''.format( d=args.data_path
-              , m=args.model_name
-              , e=args.epochs
-              , b=args.batch_size
-              , o=args.optimizer)
-    
-    with open('%s/option.txt'%save_path, 'w') as f:
-        f.write(log)
-    
-
-def set_save_directory():
+def set_save_path(opt):
     date = datetime.today().strftime("%Y_%m%d_%H%M")
-    save_path= './results/%s'%date
+    save_path= './results/%s_%s'%(date, opt['model_name'])
     if not os.path.isdir('results'): os.mkdir('results')
     if not os.path.isdir(save_path): os.mkdir(save_path)
     return save_path
-
-def get_model(model_name, x_train):
-    return model
-
-def set_callbacks(save_path):
-    reduce_lr  = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-5)
-    checkpoint = ModelCheckpoint("%s/model.h5"%save_path, save_best_only=True)
-    early_stop = EarlyStopping(monitor='val_loss', patience=8)
-    
-    return [reduce_lr, checkpoint, early_stop]
 
 def load_data(data_path, rs=34):
     x_data = np.load("%s/x_data.npy"%data_path)
@@ -52,49 +25,63 @@ def load_data(data_path, rs=34):
     _, _, l, lv = train_test_split(x_data, l_data, test_size=0.2, shuffle=True, random_state=rs)
     return x, xv, y, yv, l, lv
 
-def train(args):
-    save_path = set_save_directory() 
-    save_option(args, save_path)
-    
+def train(opt):
+    save_path = set_save_path(opt) 
+    with open('%s/opt.pickle'%save_path,'wb') as fw:
+        pickle.dump(opt, fw) 
+
     # load data
-    x_train, x_valid, y_train, y_valid, l_train, l_valid = load_data(args.data_path)
+    x_train, x_valid, y_train, y_valid, l_train, l_valid = load_data(opt['data_path'])
     print('trainset: ', x_train.shape, y_train.shape, l_train.shape)
     print('validset: ', x_valid.shape, y_valid.shape, l_valid.shape)
 
     # load model
-    if args.model_name in MODELS:
-          model = MODELS[args.model_name](x_train.shape[1:], args.optimizer)
+    if opt['model_name'] in MODELS:
+          model = MODELS[opt['model_name']](x_train.shape[1:], opt['optimizer'])
     else: model = load_model(model_name)
     plot_model(model, show_shapes=True, to_file='%s/model.png'%save_path)
-
-    # train
-    callbacks = set_callbacks(save_path)
-    history = model.fit(x_train, y_train ,
-                        batch_size=args.batch_size, epochs=args.epochs,
-                        validation_data=(x_valid, y_valid),
-                        #class_weight=np.array([args.class_weights, 1]),
-                        callbacks = callbacks
-                       )
+    
+    # callbacks
+    reduce_lr  = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-5)
+    checkpoint = ModelCheckpoint("%s/model.h5"%save_path, save_best_only=True)
+    early_stop = EarlyStopping(monitor='val_loss', patience=8)
+    
+    # train 
+    history = model.fit(x_train, l_train ,
+                    batch_size=opt['batch_size'], epochs=opt['epochs'],
+                    validation_data=(x_valid, l_valid),
+                    class_weight=np.array(opt['class_weights']),
+                    callbacks = [reduce_lr, checkpoint, early_stop])
 
     # draw learning process
     draw_lprocess(history, save='%s/plot_lprocess'%save_path)
 
+def set_option(model_name, data_path):
+    option={
+    'model_name': model_name,
+    'data_path' : data_path,
+    'epochs': 300,
+    'class_weights' : [0.15,0.15,1,0.9],
+    'batch_size' : 16,
+    'optimizer' : 'adam'
+    }
 
-def parse_args():
-    opt = argparse.ArgumentParser(description="==== Training ====")
-    opt.add_argument(dest='data_path', type=str, help=': data directory ')
-    opt.add_argument(dest='model_name', type=str, help=': select model ')
-    opt.add_argument('-e', dest='epochs', type=int, default=50, help=': epochs(default: 50)')
-    opt.add_argument('-b', dest='batch_size', type=int, default=16, help=': batch_size(default: 16)') 
-    opt.add_argument('-o', dest='optimizer', type=str, default='adam', help=': optimzier(default: adam)')
-    args = opt.parse_args()
-
-    return args
-
+    return option
 
 def main():
-    args = parse_args()
-    train(args)
+    
+    model_name= sys.argv[1]
+
+    if model_name in MODELS:
+        data_path = sys.argv[2]
+        opt = set_option(model_name, data_path)
+
+    else: 
+        with open('%s/opt.pickle'%model_name, 'rb') as fr:
+            opt = pickle.load(fr)
+
+    print(opt)
+    train(opt)
     
 if __name__=='__main__':
     main()
