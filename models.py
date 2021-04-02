@@ -3,7 +3,7 @@ import numpy as np
 from tensorflow.keras import layers, models, optimizers
 from sklearn.model_selection import train_test_split
 
-def wavenet_class(xshape, optimizer):
+def wavenet_classify(xshape, n_class, optimizer):
     
     model = models.Sequential()
     model.add(layers.Input(shape=xshape))
@@ -19,41 +19,23 @@ def wavenet_class(xshape, optimizer):
     model.add(layers.AveragePooling1D(10, padding='same'))
     
    
-    # Last layer - for label
-    model.add(layers.Conv1D(4, 10, padding='same'))
-    model.add(layers.AveragePooling1D(10, padding='same'))
-    model.add(layers.Reshape((4, )))
-    model.add(layers.Activation('softmax'))
-
-    loss='sparse_categorical_crossentropy'
-    model.compile(optimizer, loss, metrics=['accuracy'])    
+    if n_class==2:
+        n_dim = n_class-1
+        act = 'sigmoid'
+        loss='binary_crossentropy'
+    else:
+        n_dim = n_class
+        act = 'softmax'
+        loss='sparse_categorical_crossentropy'
     
+    # Last layer - for label
+    model.add(layers.Conv1D(n_dim, 10, padding='same'))
+    model.add(layers.AveragePooling1D(10, padding='same'))
+    model.add(layers.Reshape((n_dim, )))
+    model.add(layers.Activation(act))
+    
+    model.compile(optimizer, loss, metrics=['accuracy'])    
     return model
-
-def wavenet_class_binary(xshape, optimizer):
-
-    model = models.Sequential()
-    model.add(layers.InputLayer(input_shape=[xshape[1], xshape[2]]))
-    
-    for rate in (1,2,4,8):
-        model.add(layers.Conv1D(filters=20, kernel_size=2, 
-                                padding='causal', activation='relu', dilation_rate=rate))
-    
-    model.add(layers.AveragePooling1D(50, padding='same'))
-    model.add(layers.Conv1D(20, 100, padding='same', activation='relu'))
-    
-    model.add(layers.Conv1D(1, 100, padding='same', activation='relu'))
-    model.add(layers.AveragePooling1D(10, padding='same'))
-   
-    # Last layer - for label
-    model.add(layers.Conv1D(1, 10, padding='same'))
-    model.add(layers.AveragePooling1D(10, padding='same'))
-    model.add(layers.Reshape((1, )))
-    model.add(layers.Activation('sigmoid'))
-    
-    loss='binary_crossentropy'
-    model.compile(optimizer, loss, metrics=['accuracy'])    
-    return model    
 
 def wavenet_regression(xshape, optimizer):
     x = layers.Input(shape=xshape)
@@ -84,8 +66,7 @@ def wavenet_regression(xshape, optimizer):
 
 
 MODELS = {
-    'class': wavenet_class,
-    'class_bn': wavenet_class_binary,
+    'classify': wavenet_classify,
     'regression': wavenet_regression,
 }
 

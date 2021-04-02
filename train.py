@@ -37,7 +37,7 @@ def train(opt):
 
     # load model
     if opt['model_name'] in MODELS:
-          model = MODELS[opt['model_name']](x_train.shape[1:], opt['optimizer'])
+          model = MODELS[opt['model_name']](x_train.shape[1:], len(opt['class_weights']), opt['optimizer'])
     else: model = load_model(model_name)
     plot_model(model, show_shapes=True, to_file='%s/model.png'%save_path)
     
@@ -61,7 +61,8 @@ def set_option(model_name, data_path):
     'model_name': model_name,
     'data_path' : data_path,
     'epochs': 300,
-    'class_weights' : [0.15,0.15,1,0.9],
+    #'class_weights' : [0.4, 0.15, 0.15, 1 , 0.9],
+    'class_weights' : [0.3, 0.5, 1],
     'batch_size' : 16,
     'optimizer' : 'adam'
     }

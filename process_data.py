@@ -48,8 +48,10 @@ class DataProcess():
         return x_data, x_scaler
     
     def y_process(self, y_range):
-        y_data = np.clip(self.yset, 20, 100)
-        y_label = np.clip(self.yset, 20, 100)
+        self.n_bins=len(y_range)-1
+        y_data = np.clip(self.yset, 10, 100)
+        y_data = y_data*0.01
+        y_label = np.clip(self.yset, 10, 100)
         for ri, r in enumerate(y_range[:-1]):
             mask = (y_label>r)&(y_label<=y_range[ri+1])
             y_label[mask]= ri
@@ -87,14 +89,19 @@ class DataProcess():
         plt.close()
 
     def draw_l_hist(self, l_data, save=None):
+       
+        fig = plt.figure(figsize=(4, 3))
+        plt.hist(l_data, color = '#9467bd', rwidth=0.9, bins=5, alpha=0.6)
+        if save: plt.savefig(save)
+        else: plt.show()
         
         fig = plt.figure(figsize=(18, 12))
         for idx in self.idx_list:
             data=l_data[self.idx==idx]
             plt.subplot(6, 6, idx)
             plt.title(idx)
-            plt.hist(data, color = '#9467bd', rwidth=0.9, bins=4, alpha=0.6)
-        if save: plt.savefig(save)
+            plt.hist(data, color = '#9467bd', rwidth=0.9, bins=self.n_bins, alpha=0.6)
+        if save: plt.savefig(save+"_idx")
         else: plt.show()
         plt.close()
 
@@ -131,8 +138,9 @@ class DataProcess():
 def main():
     data_path = sys.argv[1]
     save_path = sys.argv[2]
-    y_range = [0,40,65,85,100]
-    test_target=19
+    y_range = [0, 40, 60,100]
+    #y_range = [0,21,41,61,78,100]
+    test_target=14
     if not os.path.isdir(save_path): os.mkdir(save_path)
     else: 
         print('! %s Already exist'%save_path)

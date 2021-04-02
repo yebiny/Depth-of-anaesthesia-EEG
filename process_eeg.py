@@ -9,10 +9,10 @@ from PyEMD import EMD
 
 class EEGProcess():
 
-    def __init__(self, dataDir, sec, window_size):
+    def __init__(self, dataDir, window_size):
+        self.sec = 125
         self.file_list = glob.glob('%s/*mat'%dataDir)
-        self.sec = sec
-        self.window_size=window_size
+        self.window_size=window_size*self.sec
         self.n_files = len(self.file_list)
         print('Total %i files : '%self.n_files, self.file_list) 
         
@@ -107,10 +107,8 @@ def parse_args():
     opt = argparse.ArgumentParser(description="==== EEG, BIS raw signal process ====")
     opt.add_argument(dest='data_path', type=str, help=': data directory ')
     opt.add_argument(dest='save_path', type=str, help=': set save directory ')
-    opt.add_argument('-s',  dest='second', type=int, default=125, 
-                    help='data point per second (default: 125)')
-    opt.add_argument('-w',  dest='window_size', type=int, default=625, 
-                    help='window size for eeg (default: 625)')
+    opt.add_argument('-w',  dest='window_sec', type=int, default=5, 
+                    help='window size for eeg (default: 5)')
     
     args = opt.parse_args()
 
@@ -126,7 +124,7 @@ def main():
     args = parse_args()    
     check_args(args)
 
-    ep = EEGProcess(args.data_path, args.second, args.window_size)
+    ep = EEGProcess(args.data_path, args.window_sec)
     xset, yset, idx = ep.process(ep.n_files)
     print(xset.shape, yset.shape, idx.shape)
 
