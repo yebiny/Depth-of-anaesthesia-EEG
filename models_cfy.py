@@ -3,7 +3,7 @@ import numpy as np
 from tensorflow.keras import layers, models, optimizers
 from sklearn.model_selection import train_test_split
 
-def wavenet_classify(xshape, n_class, optimizer):
+def ver1(xshape, n_class, optimizer):
     
     model = models.Sequential()
     model.add(layers.Input(shape=xshape))
@@ -37,37 +37,8 @@ def wavenet_classify(xshape, n_class, optimizer):
     model.compile(optimizer, loss, metrics=['accuracy'])    
     return model
 
-def wavenet_regression(xshape, optimizer):
-    x = layers.Input(shape=xshape)
-    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=1)(x)
-    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=2)(y)
-    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=4)(y)
-    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=8)(y)
-
-    y = layers.AveragePooling1D(50, padding='same')(y)
-    y = layers.Conv1D(20, 100, padding='same', activation='relu')(y)
-
-    y = layers.Conv1D(10, 100, padding='same', activation='relu')(y)
-    y = layers.AveragePooling1D(100, padding='same')(y)
-    
-    # Last layer - for label
-    y = layers.Conv1D(10, 10, padding='same')(y)
-    y = layers.AveragePooling1D(10, padding='same')(y)
-    y = layers.Reshape((10, ))(y)
-    
-    y = layers.Dense(10, activation='relu')(y)
-    y = layers.Dense(1)(y) 
-    
-    model = models.Model(x, y)
-    model.compile(optimizer, 'mse', metrics=['mse', 'mae'])
-
-    return model
-
-
-
 MODELS = {
-    'classify': wavenet_classify,
-    'regression': wavenet_regression,
+    'ver1': ver1,
 }
 
 
