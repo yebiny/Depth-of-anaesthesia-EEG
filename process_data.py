@@ -1,6 +1,7 @@
-import os, sys, glob
+import os, sys, glob, pickle
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import random
 
@@ -47,16 +48,18 @@ class DataProcess():
         
         return x_data, x_scaler
     
-    def y_process(self, y_range):
+    def y_process(self, y_range, scaler):
         self.n_bins=len(y_range)-1
-        y_data = np.clip(self.yset, 10, 100)
-        y_data = y_data*0.01
-        y_label = np.clip(self.yset, 10, 100)
-        for ri, r in enumerate(y_range[:-1]):
-            mask = (y_label>r)&(y_label<=y_range[ri+1])
-            y_label[mask]= ri
+        if scaler == 'divide':
+            y_data = np.clip(self.yset, 0, 100)
+            y_data = y_data*0.01
 
-        return y_data, y_label
+        l_data = np.clip(self.yset, 10, 100)
+        for ri, r in enumerate(y_range[:-1]):
+            mask = (l_data>r)&(l_data<=y_range[ri+1])
+            l_data[mask]= ri
+
+        return y_data, l_data
 
 
     def draw_x_hist(self, x_data, save=None):
@@ -108,7 +111,7 @@ class DataProcess():
     def balance_data(self, x_data, y_data, n=5000):
 
         label_list = list(set(y_data))
-        print(label_list, 'target label is: ', self.target_label)
+        #print(label_list, 'target label is: ', self.target_label)
 
         x_out, y_out=[], []
         for label in label_list:
@@ -128,30 +131,44 @@ class DataProcess():
 
         return x_data, y_data
 
-    def train_test_split(self, x_data, y_data, y_label, test_target):
+    def train_test_split(self, x_data, y_data, l_data, test_target):
         x_train, x_test = x_data[self.idx!=test_target], x_data[self.idx==test_target]
         y_train, y_test = y_data[self.idx!=test_target], y_data[self.idx==test_target]
-        y_train_label, y_test_label = y_label[self.idx!=test_target], y_label[self.idx==test_target]
+        y_train_label, y_test_label = l_data[self.idx!=test_target], l_data[self.idx==test_target]
         
         return x_train, y_train, y_train_label, x_test, y_test, y_test_label
+    
+    def train_valid_split(self, x_data, y_data, l_data, size, rs):
+        x, xv, y, yv = train_test_split(x_data, y_data, test_size=0.2, shuffle=True, random_state=rs)
+        _, _, l, lv = train_test_split(x_data, l_data, test_size=0.2, shuffle=True, random_state=rs)
+
+        return x, y, l, xv, yv, lv
 
 def main():
     data_path = sys.argv[1]
-    save_path = sys.argv[2]
-    y_range = [0, 40, 60,100]
-    #y_range = [0,21,41,61,78,100]
-    test_target=14
+    save_path = '%s/%s'%(data_path, sys.argv[2])
     if not os.path.isdir(save_path): os.mkdir(save_path)
     else: 
         print('! %s Already exist'%save_path)
         exit()
-
+    
+    opt={ 
+    'Y_RANGE': [0, 40, 60, 80, 100], 
+    #y_range = [0,21,41,61,78,100]
+    'Y_SCALE': 'divide',
+    'TEST_TARGET': 14,
+    'VALID_SIZE': 0.2,
+    'RS': 34,
+    }
+    sys.stdout = open('%s/log.txt'%save_path,'w') 
+    print(opt)
+    
     dp = DataProcess(data_path)
     
     # start data process 
     x_data, x_scaler = dp.x_process()
-    y_data, l_data = dp.y_process(y_range)
-    print(x_data.shape, y_data.shape, l_data.shape)
+    y_data, l_data = dp.y_process(opt['Y_RANGE'], opt['Y_SCALE'])
+    print('* total data: ', x_data.shape, y_data.shape, l_data.shape)
     
     # draw data plots
     dp.draw_x_hist(x_data, '%s/xhist'%save_path)
@@ -162,14 +179,25 @@ def main():
     x_data, y_data, l_data, x_test, y_test, l_test = dp.train_test_split( x_data
                                                                         , y_data
                                                                         , l_data
-                                                                        , test_target)
-    print(x_data.shape, y_data.shape, l_data.shape, x_test.shape, y_test.shape, l_test.shape)
+                                                                        , opt['TEST_TARGET'])
     
+    x_train, y_train, l_train, x_valid, y_valid, l_valid = dp.train_valid_split( x_data
+                                                                                , y_data
+                                                                                , l_data
+                                                                                , opt['VALID_SIZE']
+                                                                                , opt['RS'])
+
+    print('* trainset: ', x_train.shape, y_train.shape, l_test.shape)
+    print('* vlaidset: ', x_valid.shape, y_valid.shape, l_test.shape)
+    print('* testset : ', x_test.shape, y_test.shape, l_test.shape)
 
     # save data 
-    np.save('%s/x_data'%save_path, x_data)
-    np.save('%s/y_data'%save_path, y_data)
-    np.save('%s/l_data'%save_path, l_data)
+    np.save('%s/x_train'%save_path, x_train)
+    np.save('%s/y_train'%save_path, y_train)
+    np.save('%s/l_train'%save_path, l_train)
+    np.save('%s/x_valid'%save_path, x_valid)
+    np.save('%s/y_valid'%save_path, y_valid)
+    np.save('%s/l_valid'%save_path, l_valid)
     np.save('%s/x_test'%save_path, x_test)
     np.save('%s/y_test'%save_path, y_test)
     np.save('%s/l_test'%save_path, l_test)

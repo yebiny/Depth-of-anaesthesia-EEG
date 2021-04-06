@@ -3,7 +3,7 @@ import numpy as np
 from tensorflow.keras import layers, models, optimizers
 from sklearn.model_selection import train_test_split
 
-def ver1(xshape, n_class, optimizer):
+def cfy1(xshape, n_class, optimizer):
     
     model = models.Sequential()
     model.add(layers.Input(shape=xshape))
@@ -38,7 +38,7 @@ def ver1(xshape, n_class, optimizer):
     return model
 
 MODELS = {
-    'ver1': ver1,
+    'cfy1': cfy1,
 }
 
 

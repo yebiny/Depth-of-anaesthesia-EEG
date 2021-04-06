@@ -13,12 +13,12 @@ class EVAL():
         self.data_path = data_path
 
     def load_data(self):
-        x_data = np.load('%s/x_data.npy'%self.data_path)
-        l_data = np.load('%s/l_data.npy'%self.data_path)
+        x_valid = np.load('%s/x_valid.npy'%self.data_path)
+        l_valid = np.load('%s/l_valid.npy'%self.data_path)
         x_test = np.load('%s/x_test.npy'%self.data_path)
         l_test = np.load('%s/l_test.npy'%self.data_path)
-        _, x_valid, _, l_valid = train_test_split(x_data, l_data, test_size=0.2, random_state=34)
-        return x_valid, x_test, l_valid, l_test
+        
+        return x_valid, l_valid, x_test, l_test
 
     def _draw_cm(self, y_true, y_pred, ax, title='Confusion matrix'):
         cm = metrics.confusion_matrix(y_true, y_pred)
@@ -32,7 +32,7 @@ class EVAL():
 
     def draw_multi_cm(self, save=None):
         
-        x_valid, x_test, l_valid, l_test = self.load_data()
+        x_valid, l_valid, x_test, l_test = self.load_data()
 
         plt.figure(figsize=(12,4))
         

@@ -10,8 +10,9 @@ from models_cfy import *
 from draw import *
 
 def set_save_path(opt):
-    date = datetime.today().strftime("%Y_%m%d_%H%M")
-    save_path= './results/%s_%s'%(date, opt['model_name'])
+    date = datetime.today().strftime("%m%d_%H%M")
+    nclass = len(opt['class_weights'])
+    save_path= './results/21%s_%s_class%i'%(date, opt['model_name'], nclass)
     if not os.path.isdir('results'): os.mkdir('results')
     if not os.path.isdir(save_path): os.mkdir(save_path)
     return save_path
@@ -60,8 +61,8 @@ def set_option(model_name, data_path):
     'model_name': model_name,
     'data_path' : data_path,
     'epochs': 300,
-    #'class_weights' : [0.4, 0.15, 0.15, 1 , 0.9],
-    'class_weights' : [0.2, 0.4, 1],
+    'class_weights' : [0.1, 0.2, 1 , 0.9],
+    #'class_weights' : [0.2, 0.4, 1],
     'batch_size' : 16,
     'optimizer' : 'adam'
     }
