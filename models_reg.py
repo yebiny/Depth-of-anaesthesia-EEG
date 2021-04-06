@@ -3,46 +3,20 @@ import numpy as np
 from tensorflow.keras import layers, models, optimizers
 from sklearn.model_selection import train_test_split
 
-def wavenet_classify(xshape, n_class, optimizer):
-    
-    model = models.Sequential()
-    model.add(layers.Input(shape=xshape))
-    
-    for rate in (1,2,4,8):
-        model.add(layers.Conv1D(filters=20, kernel_size=2, 
-                                padding='causal', activation='relu', dilation_rate=rate))
-    
-    model.add(layers.AveragePooling1D(50, padding='same'))
-    model.add(layers.Conv1D(20, 100, padding='same', activation='relu'))
-    
-    model.add(layers.Conv1D(1, 100, padding='same', activation='relu'))
-    model.add(layers.AveragePooling1D(10, padding='same'))
-    
-   
-    if n_class==2:
-        n_dim = n_class-1
-        act = 'sigmoid'
-        loss='binary_crossentropy'
-    else:
-        n_dim = n_class
-        act = 'softmax'
-        loss='sparse_categorical_crossentropy'
-    
-    # Last layer - for label
-    model.add(layers.Conv1D(n_dim, 10, padding='same'))
-    model.add(layers.AveragePooling1D(10, padding='same'))
-    model.add(layers.Reshape((n_dim, )))
-    model.add(layers.Activation(act))
-    
-    model.compile(optimizer, loss, metrics=['accuracy'])    
-    return model
 
-def wavenet_regression(xshape, optimizer):
+def reg1(xshape, optimizer):
+    def _conv(x):
+        y = layers.Conv1D( filters=20
+                         , kernel_size=2
+                         , padding='causal'
+                         , activation='relu'
+                         , dilation_rate=1)(x)
+        return y
+    
     x = layers.Input(shape=xshape)
-    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=1)(x)
-    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=2)(y)
-    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=4)(y)
-    y = layers.Conv1D(filters=20, kernel_size=2, padding='causal', activation='relu', dilation_rate=8)(y)
+    y = _conv(x)
+    for rate in (2,4,8):
+        y = _conv(y)
 
     y = layers.AveragePooling1D(50, padding='same')(y)
     y = layers.Conv1D(20, 100, padding='same', activation='relu')(y)
@@ -64,10 +38,8 @@ def wavenet_regression(xshape, optimizer):
     return model
 
 
-
 MODELS = {
-    'ver1': wavenet_classify,
-    'regression': wavenet_regression,
+    'reg1': reg1,
 }
 
 

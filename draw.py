@@ -21,18 +21,19 @@ def draw_lprocess(history, save=None):
     else:
         plt.show()
     
-    figure=plt.figure()
-    plt.title('Accuracy')
-    plt.xlabel('epoch')
-    plt.ylabel('acc')
-    plt.xticks(history.epoch)
-    plt.plot(history.history['accuracy'], 'y', label='t acc')
-    plt.plot(history.history['val_accuracy'], 'r', label='v acc')
-    plt.legend(loc='lower right')
-    if save!=None:
-        plt.savefig(save+'_acc')        
-    else:
-        plt.show()
+    if 'accuracy' in history.history:
+        figure=plt.figure()
+        plt.title('Accuracy')
+        plt.xlabel('epoch')
+        plt.ylabel('acc')
+        plt.xticks(history.epoch)
+        plt.plot(history.history['accuracy'], 'y', label='t acc')
+        plt.plot(history.history['val_accuracy'], 'r', label='v acc')
+        plt.legend(loc='lower right')
+        if save!=None:
+            plt.savefig(save+'_acc')        
+        else:
+            plt.show()
 
 def draw_multi_hist(data_list, n_row=1, save=None):
     n_data = len(data_list)

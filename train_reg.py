@@ -6,24 +6,23 @@ from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, ReduceLROnPla
 from tensorflow.keras.models import load_model
 from sklearn.model_selection import train_test_split
 
-from models import *
+from models_reg import *
 from draw import *
 
 def set_save_path(opt):
-    date = datetime.today().strftime("%Y_%m%d_%H%M")
-    save_path= './results/%s_%s'%(date, opt['model_name'])
+    date = datetime.today().strftime("%m%d_%H%M")
+    save_path= './results/21%s_%s_reg'%(date, opt['model_name'])
     if not os.path.isdir('results'): os.mkdir('results')
     if not os.path.isdir(save_path): os.mkdir(save_path)
     return save_path
 
 def load_data(data_path, rs=34):
-    x_data = np.load("%s/x_data.npy"%data_path)
-    y_data = np.load("%s/y_data.npy"%data_path)
-    l_data = np.load("%s/l_data.npy"%data_path)
+    x_train = np.load("%s/x_train.npy"%data_path)
+    y_train = np.load("%s/y_train.npy"%data_path)
+    x_valid = np.load("%s/x_valid.npy"%data_path)
+    y_valid = np.load("%s/y_valid.npy"%data_path)
     
-    x, xv, y, yv = train_test_split(x_data, y_data, test_size=0.2, shuffle=True, random_state=rs)
-    _, _, l, lv = train_test_split(x_data, l_data, test_size=0.2, shuffle=True, random_state=rs)
-    return x, xv, y, yv, l, lv
+    return x_train, y_train, x_valid, y_valid
 
 def train(opt):
     save_path = set_save_path(opt) 
@@ -31,13 +30,13 @@ def train(opt):
         pickle.dump(opt, fw) 
 
     # load data
-    x_train, x_valid, y_train, y_valid, l_train, l_valid = load_data(opt['data_path'])
-    print('trainset: ', x_train.shape, y_train.shape, l_train.shape)
-    print('validset: ', x_valid.shape, y_valid.shape, l_valid.shape)
+    x_train, l_train, x_valid, l_valid = load_data(opt['data_path'])
+    print('trainset: ', x_train.shape, l_train.shape)
+    print('validset: ', x_valid.shape, l_valid.shape)
 
     # load model
     if opt['model_name'] in MODELS:
-          model = MODELS[opt['model_name']](x_train.shape[1:], len(opt['class_weights']), opt['optimizer'])
+          model = MODELS[opt['model_name']](x_train.shape[1:], opt['optimizer'])
     else: model = load_model(model_name)
     plot_model(model, show_shapes=True, to_file='%s/model.png'%save_path)
     
@@ -50,7 +49,6 @@ def train(opt):
     history = model.fit(x_train, l_train ,
                     batch_size=opt['batch_size'], epochs=opt['epochs'],
                     validation_data=(x_valid, l_valid),
-                    class_weight=np.array(opt['class_weights']),
                     callbacks = [reduce_lr, checkpoint, early_stop])
 
     # draw learning process
@@ -60,9 +58,7 @@ def set_option(model_name, data_path):
     option={
     'model_name': model_name,
     'data_path' : data_path,
-    'epochs': 300,
-    #'class_weights' : [0.4, 0.15, 0.15, 1 , 0.9],
-    'class_weights' : [0.3, 0.5, 1],
+    'epochs': 100,
     'batch_size' : 16,
     'optimizer' : 'adam'
     }
