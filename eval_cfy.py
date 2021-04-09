@@ -59,9 +59,9 @@ def main():
     
     ev = EVAL(model_path, data_path)
     ev.draw_multi_cm('%s/plot_cm'%model_path)    
-    if ev.model.output.shape[1] == 1:
-        ev.draw_response('%s/plot_response'%model_path)
-        ev.draw_roc('%s/plot_roc'%model_path)
+    #if ev.model.output.shape[1] == 1:
+    #    ev.draw_response('%s/plot_response'%model_path)
+    #    ev.draw_roc('%s/plot_roc'%model_path)
     
 
 if __name__=='__main__':

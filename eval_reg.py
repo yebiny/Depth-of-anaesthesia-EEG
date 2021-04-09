@@ -15,6 +15,8 @@ class EVAL():
         self.x_test, self.y_test, self.l_test = self.load_data('test')
 
 
+        self.y_pred = self.model.predict(self.x_valid)
+    
     def load_data(self, data_type):
         if data_type=='valid':
             x = np.load('%s/x_valid.npy'%self.data_path)
@@ -38,9 +40,8 @@ class EVAL():
 
     def draw_regression(self, save=None):
 
-        y_pred = self.model.predict(self.x_valid)
         plt.figure(figsize=(10,10))
-        for y, y_h in zip(self.y_valid, y_pred):
+        for y, y_h in zip(self.y_valid, self.y_pred):
             plt.plot(y, y_h[0], 'or', marker='.')
         
         plt.xlabel("BIS")
@@ -51,15 +52,11 @@ class EVAL():
 
     def draw_multi_cm(self, save=None):
         
-        x_valid, l_valid, x_test, l_test = self.load_data()
 
         plt.figure(figsize=(12,4))
-        
-        l_pred = self.model.predict_classes(x_valid)
         ax = plt.subplot(1,2,1)
         self._draw_cm(l_valid, l_pred, ax, title='Valid set')
         
-        l_pred = self.model.predict_classes(x_test)
         ax = plt.subplot(1,2,2)
         self._draw_cm(l_test, l_pred, ax, title='Test set' )
         
