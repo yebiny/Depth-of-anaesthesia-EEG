@@ -90,46 +90,39 @@ class DataProcess():
         if save: plt.savefig(save)
         else: plt.show()
         plt.close()
-
+ 
     def draw_l_hist(self, l_data, save=None):
-       
         fig = plt.figure(figsize=(4, 3))
         plt.hist(l_data, color = '#9467bd', rwidth=0.9, bins=5, alpha=0.6)
         if save: plt.savefig(save)
         else: plt.show()
-        
+        plt.close()
+
+    def draw_idx_hist(self, l_data, save=None):
+       
         fig = plt.figure(figsize=(18, 12))
         for idx in self.idx_list:
             data=l_data[self.idx==idx]
             plt.subplot(6, 6, idx)
             plt.title(idx)
             plt.hist(data, color = '#9467bd', rwidth=0.9, bins=self.n_bins, alpha=0.6)
-        if save: plt.savefig(save+"_idx")
+        if save: plt.savefig(save)
         else: plt.show()
         plt.close()
 
-    def balance_data(self, x_data, y_data, n=5000):
+    def balance_data(self, x_data, y_data, l_data,  size):
 
-        label_list = list(set(y_data))
-        #print(label_list, 'target label is: ', self.target_label)
+        x0, y0, l0 = x_data[l_data==0], y_data[l_data==0], l_data[l_data==0]
+        x1, y1, l1 = x_data[l_data==1], y_data[l_data==1], l_data[l_data==1] 
+         
+        x, _, y, _ = train_test_split(x0, y0, train_size=size, shuffle=True, random_state=11)
+        x, _, l, _ = train_test_split(x0, l0, train_size=size, shuffle=True, random_state=11)
+        
+        x =  np.concatenate((x, x1))
+        y =  np.concatenate((y, y1))
+        l =  np.concatenate((l, l1))
 
-        x_out, y_out=[], []
-        for label in label_list:
-            if label==self.target_label:
-                x_balance = x_data[y_data==self.target_label]
-                y_balance = [label for i in range(len(x_balance))]
-            else:
-                x_balance = x_data[y_data==label]
-                x_balance = np.array(random.sample(list(x_balance), n))
-                y_balance = [label for i in range(n)]
-            x_out.append(x_balance)
-            y_out.append(y_balance)
-
-        # Final output
-        x_data = np.concatenate((x_out), axis=0)
-        y_data = np.concatenate((y_out), axis=0)
-
-        return x_data, y_data
+        return x, y, l
 
     def train_test_split(self, x_data, y_data, l_data, test_target):
         x_train, x_test = x_data[self.idx!=test_target], x_data[self.idx==test_target]
@@ -153,42 +146,50 @@ def main():
         exit()
     
     opt={ 
-    'Y_RANGE': [0, 40, 60, 80, 100], 
+    'Y_RANGE': [0, 65, 100], 
     #y_range = [0,21,41,61,78,100]
     'Y_SCALE': 'divide',
-    'TEST_TARGET': 14,
+    'TEST_TARGET': 24,
     'VALID_SIZE': 0.2,
     'RS': 34,
+    'BALANCE':0.2
     }
     sys.stdout = open('%s/log.txt'%save_path,'w') 
     print(opt)
     
-    dp = DataProcess(data_path)
     
+    dp = DataProcess(data_path)
     # start data process 
     x_data, x_scaler = dp.x_process()
     y_data, l_data = dp.y_process(opt['Y_RANGE'], opt['Y_SCALE'])
-    print('* total data: ', x_data.shape, y_data.shape, l_data.shape)
+    print('* EEG data: ', x_data.shape, y_data.shape, l_data.shape)
     
     # draw data plots
     dp.draw_x_hist(x_data, '%s/xhist'%save_path)
     dp.draw_y_hist(y_data, '%s/yhist'%save_path)
     dp.draw_l_hist(l_data, '%s/lhist'%save_path)
+    dp.draw_idx_hist(l_data, '%s/idxhist'%save_path)
    
     # test data split
     x_data, y_data, l_data, x_test, y_test, l_test = dp.train_test_split( x_data
                                                                         , y_data
                                                                         , l_data
                                                                         , opt['TEST_TARGET'])
+    print('* Test split-trainset ', x_data.shape, y_data.shape, l_data.shape)
+    print('* Test split-testset ', x_test.shape, y_test.shape, l_test.shape)
+    
+    # Balace
+    x_data, y_data, l_data = dp.balance_data(x_data, y_data, l_data, size=opt['BALANCE'])
+    dp.draw_l_hist(l_data, '%s/lhist_balanced'%save_path)
+    print('* Balacne: ', x_data.shape, y_data.shape, l_data.shape)
     
     x_train, y_train, l_train, x_valid, y_valid, l_valid = dp.train_valid_split( x_data
                                                                                 , y_data
                                                                                 , l_data
                                                                                 , opt['VALID_SIZE']
                                                                                 , opt['RS'])
-
-    print('* trainset: ', x_train.shape, y_train.shape, l_test.shape)
-    print('* vlaidset: ', x_valid.shape, y_valid.shape, l_test.shape)
+    print('* trainset: ', x_train.shape, y_train.shape, l_train.shape)
+    print('* vlaidset: ', x_valid.shape, y_valid.shape, l_valid.shape)
     print('* testset : ', x_test.shape, y_test.shape, l_test.shape)
 
     # save data 
