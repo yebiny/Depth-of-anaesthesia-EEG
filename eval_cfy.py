@@ -15,10 +15,10 @@ class EVAL():
     def load_data(self):
         x_valid = np.load('%s/x_valid.npy'%self.data_path)
         l_valid = np.load('%s/l_valid.npy'%self.data_path)
-        x_test = np.load('%s/x_test.npy'%self.data_path)
-        l_test = np.load('%s/l_test.npy'%self.data_path)
+        x_train = np.load('%s/x_train.npy'%self.data_path)
+        l_train = np.load('%s/l_train.npy'%self.data_path)
         
-        return x_valid, l_valid, x_test, l_test
+        return x_valid, l_valid, x_train, l_train
 
     def _draw_cm(self, y_true, y_pred, ax, title='Confusion matrix'):
         cm = metrics.confusion_matrix(y_true, y_pred)
@@ -32,7 +32,7 @@ class EVAL():
 
     def draw_multi_cm(self, save=None):
         
-        x_valid, l_valid, x_test, l_test = self.load_data()
+        x_valid, l_valid, x_train, l_train = self.load_data()
 
         plt.figure(figsize=(12,4))
         
@@ -40,9 +40,9 @@ class EVAL():
         ax = plt.subplot(1,2,1)
         self._draw_cm(l_valid, l_pred, ax, title='Valid set')
         
-        l_pred = self.model.predict_classes(x_test)
+        l_pred = self.model.predict_classes(x_train)
         ax = plt.subplot(1,2,2)
-        self._draw_cm(l_test, l_pred, ax, title='Test set' )
+        self._draw_cm(l_train, l_pred, ax, title='Train set' )
         
         if save!=None:
             plt.savefig(save)

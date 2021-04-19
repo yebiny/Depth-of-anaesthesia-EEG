@@ -9,10 +9,14 @@ class DataProcess():
     def __init__(self, data_path):
         
         # load data 
-        self.xset = np.load('%s/xset.npy'%data_path)
-        self.yset = np.load('%s/yset.npy'%data_path)
-        self.idx = np.load('%s/idx.npy'%data_path)
+        xset = np.load('%s/xset.npy'%data_path)
+        yset = np.load('%s/yset.npy'%data_path)
+        idx = np.load('%s/idx.npy'%data_path)
         
+        self.xset = xset[idx!=24]
+        self.yset = yset[idx!=24]
+        self.idx = idx[idx!=24]
+
         self.n_features = self.xset.shape[1]
         self.idx_list = list(set(self.idx))
         print(self.xset.shape, self.yset.shape, self.n_features)
@@ -53,10 +57,21 @@ class DataProcess():
         if scaler == 'divide':
             y_data = np.clip(self.yset, 0, 100)
             y_data = y_data*0.01
+        
+        if scaler == 'divide65':
+            y_data = np.clip(self.yset, 0, 100)
+            y_data = y_data/65
+        
+        if scaler == 'log':
+            y_data = np.clip(self.yset, 10, 100)
+            y_data = np.log(y_data)
+        
+        if scaler == 'none':
+            y_data = np.clip(self.yset, 0, 100)
 
-        l_data = np.clip(self.yset, 10, 100)
+        l_data = np.clip(self.yset, 0, 100)
         for ri, r in enumerate(y_range[:-1]):
-            mask = (l_data>r)&(l_data<=y_range[ri+1])
+            mask = (l_data>=r)&(l_data<y_range[ri+1])
             l_data[mask]= ri
 
         return y_data, l_data
@@ -110,20 +125,6 @@ class DataProcess():
         else: plt.show()
         plt.close()
 
-    def balance_data(self, x_data, y_data, l_data,  size):
-
-        x0, y0, l0 = x_data[l_data==0], y_data[l_data==0], l_data[l_data==0]
-        x1, y1, l1 = x_data[l_data==1], y_data[l_data==1], l_data[l_data==1] 
-         
-        x, _, y, _ = train_test_split(x0, y0, train_size=size, shuffle=True, random_state=11)
-        x, _, l, _ = train_test_split(x0, l0, train_size=size, shuffle=True, random_state=11)
-        
-        x =  np.concatenate((x, x1))
-        y =  np.concatenate((y, y1))
-        l =  np.concatenate((l, l1))
-
-        return x, y, l
-
     def train_test_split(self, x_data, y_data, l_data, test_target):
         x_train, x_test = x_data[self.idx!=test_target], x_data[self.idx==test_target]
         y_train, y_test = y_data[self.idx!=test_target], y_data[self.idx==test_target]
@@ -132,8 +133,8 @@ class DataProcess():
         return x_train, y_train, y_train_label, x_test, y_test, y_test_label
     
     def train_valid_split(self, x_data, y_data, l_data, size, rs):
-        x, xv, y, yv = train_test_split(x_data, y_data, test_size=0.2, shuffle=True, random_state=rs)
-        _, _, l, lv = train_test_split(x_data, l_data, test_size=0.2, shuffle=True, random_state=rs)
+        x, xv, y, yv = train_test_split(x_data, y_data, test_size=size, shuffle=True, random_state=rs)
+        _, _, l, lv = train_test_split(x_data, l_data, test_size=size, shuffle=True, random_state=rs)
 
         return x, y, l, xv, yv, lv
 
@@ -146,14 +147,12 @@ def main():
         exit()
     
     opt={ 
-    'Y_RANGE': [0, 65, 100], 
-    #y_range = [0,21,41,61,78,100]
-    'Y_SCALE': 'divide',
-    'TEST_TARGET': 24,
+    'Y_RANGE': [0, 40, 65, 85, 100], 
+    'Y_SCALE': 'none',
+    'TEST_TARGET': 19,
     'VALID_SIZE': 0.2,
     'RS': 34,
-    'BALANCE':0.2
-    }
+    'CUT_VAL': 10}
     sys.stdout = open('%s/log.txt'%save_path,'w') 
     print(opt)
     
@@ -169,25 +168,32 @@ def main():
     dp.draw_y_hist(y_data, '%s/yhist'%save_path)
     dp.draw_l_hist(l_data, '%s/lhist'%save_path)
     dp.draw_idx_hist(l_data, '%s/idxhist'%save_path)
-   
+  
     # test data split
     x_data, y_data, l_data, x_test, y_test, l_test = dp.train_test_split( x_data
                                                                         , y_data
                                                                         , l_data
                                                                         , opt['TEST_TARGET'])
-    print('* Test split-trainset ', x_data.shape, y_data.shape, l_data.shape)
-    print('* Test split-testset ', x_test.shape, y_test.shape, l_test.shape)
+    print('** train-test split **')
+    print('* train set ', x_data.shape, y_data.shape, l_data.shape)
+    print('* test set ', x_test.shape, y_test.shape, l_test.shape)
     
-    # Balace
-    x_data, y_data, l_data = dp.balance_data(x_data, y_data, l_data, size=opt['BALANCE'])
-    dp.draw_l_hist(l_data, '%s/lhist_balanced'%save_path)
-    print('* Balacne: ', x_data.shape, y_data.shape, l_data.shape)
-    
+    # valid data split 
     x_train, y_train, l_train, x_valid, y_valid, l_valid = dp.train_valid_split( x_data
                                                                                 , y_data
                                                                                 , l_data
                                                                                 , opt['VALID_SIZE']
                                                                                 , opt['RS'])
+    print('** train-valid split  **')
+    print('* trainset: ', x_train.shape, y_train.shape, l_train.shape)
+    print('* vlaidset: ', x_valid.shape, y_valid.shape, l_valid.shape)
+    print('* testset : ', x_test.shape, y_test.shape, l_test.shape)
+    
+    cutval = opt['CUT_VAL']
+    x_train, y_train, l_train = x_train[y_train>=cutval], y_train[y_train>=cutval], l_train[y_train>=cutval]
+    x_valid, y_valid, l_valid = x_valid[y_valid>=cutval], y_valid[y_valid>=cutval], l_valid[y_valid>=cutval]
+    
+    print('** cut value %i **'%opt['CUT_VAL'])
     print('* trainset: ', x_train.shape, y_train.shape, l_train.shape)
     print('* vlaidset: ', x_valid.shape, y_valid.shape, l_valid.shape)
     print('* testset : ', x_test.shape, y_test.shape, l_test.shape)

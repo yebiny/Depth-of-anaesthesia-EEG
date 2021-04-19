@@ -2,7 +2,6 @@ import os, sys, pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
-from sklearn.model_selection import train_test_split
 from sklearn import metrics
 import seaborn as sns
 class EVAL():
@@ -11,21 +10,28 @@ class EVAL():
 
         self.model =  load_model("%s/model.h5"%model_path)
         self.data_path = data_path
+        self.x_train, self.y_train, self.l_train = self.load_data('train')
         self.x_valid, self.y_valid, self.l_valid = self.load_data('valid')
-        self.x_test, self.y_test, self.l_test = self.load_data('test')
-
 
         self.y_pred = self.model.predict(self.x_valid)
-    
+   
+    def draw_reg(self, save):
+        plt.figure(figsize=(6,6))
+        plt.scatter(self.y_valid, self.y_pred, alpha=0.6, marker='.')
+        if save!=None:
+            plt.savefig(save)
+        else: plt.show()
+        plt.close('all')
+
     def load_data(self, data_type):
         if data_type=='valid':
             x = np.load('%s/x_valid.npy'%self.data_path)
             y = np.load('%s/y_valid.npy'%self.data_path)
             l = np.load('%s/l_valid.npy'%self.data_path)
-        if data_type=='test':
-            x = np.load('%s/x_test.npy'%self.data_path)
-            y = np.load('%s/y_test.npy'%self.data_path)
-            l = np.load('%s/l_test.npy'%self.data_path)
+        if data_type=='train':
+            x = np.load('%s/x_train.npy'%self.data_path)
+            y = np.load('%s/y_train.npy'%self.data_path)
+            l = np.load('%s/l_train.npy'%self.data_path)
         return x, y, l
 
     def _draw_cm(self, y_true, y_pred, ax, title='Confusion matrix'):
@@ -38,27 +44,16 @@ class EVAL():
         ax.set_ylabel("True")
         ax.set_ylim(buttom+0.5, top-0.5)
 
-    def draw_regression(self, save=None):
-
-        plt.figure(figsize=(10,10))
-        for y, y_h in zip(self.y_valid, self.y_pred):
-            plt.plot(y, y_h[0], 'or', marker='.')
+    def draw_multi_cm(self, cut, save=None):
         
-        plt.xlabel("BIS")
-        plt.ylabel("MODEL")
-        if save: plt.savefig(save)
-        else: plt.show()
-        plt.close('all')
+        l_pred = []
+        for y in self.y_pred:
+            if y<cut: l_pred.append(0)
+            else: l_pred.append(1)
 
-    def draw_multi_cm(self, save=None):
-        
-
-        plt.figure(figsize=(12,4))
-        ax = plt.subplot(1,2,1)
-        self._draw_cm(l_valid, l_pred, ax, title='Valid set')
-        
-        ax = plt.subplot(1,2,2)
-        self._draw_cm(l_test, l_pred, ax, title='Test set' )
+        plt.figure(figsize=(6,4))
+        ax = plt.subplot(1,1,1)
+        self._draw_cm(self.l_valid, l_pred, ax, title='Valid set')
         
         if save!=None:
             plt.savefig(save)
@@ -74,9 +69,8 @@ def main():
     print(opt)
     
     ev = EVAL(model_path, data_path)
-    
-    ev.draw_regression('%s/plot_regression'%model_path)
-#ev.draw_multi_cm('%s/plot_cm'%model_path)    
+    ev.draw_reg('%s/plot_reg'%model_path) 
+    ev.draw_multi_cm(0.428, '%s/plot_cm'%model_path)    
 #    if ev.model.output.shape[1] == 1:
 #        ev.draw_response('%s/plot_response'%model_path)
 #        ev.draw_roc('%s/plot_roc'%model_path)
