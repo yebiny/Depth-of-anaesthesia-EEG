@@ -6,6 +6,24 @@ from matplotlib.lines import Line2D
 from sklearn import metrics
 
 
+def draw_lhist(tag, llist, tlist=[], save=None):
+    if tag=='l':
+        ran, bins = (0,4), 4
+    if tag=='y':
+        ran, bins = (0,1), 50
+
+    n = len(llist)
+    fig = plt.figure(figsize=(4*n, 3))
+    for i, l in enumerate(llist):
+        plt.subplot(1,n,i+1)
+        plt.hist(l, color = '#9467bd', rwidth=0.9, 
+                 bins=bins, range=ran, alpha=0.6)
+        if tlist[i]: plt.title(tlist[i])
+
+    if save: plt.savefig(save)
+    else: plt.show()
+    plt.close()
+
 
 def draw_lprocess(history, save=None):
     figure=plt.figure()
@@ -13,8 +31,8 @@ def draw_lprocess(history, save=None):
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.xticks(history.epoch)
-    plt.plot(history.history['loss'], 'y', label='t loss')
-    plt.plot(history.history['val_loss'], 'r', label='v loss')
+    plt.plot(history.history['loss'], 'y', label='t loss', marker='.')
+    plt.plot(history.history['val_loss'], 'r', label='v loss', marker='.')
     plt.legend(loc='upper right')
     if save!=None:
         plt.savefig(save+'_loss')        
@@ -27,8 +45,8 @@ def draw_lprocess(history, save=None):
         plt.xlabel('epoch')
         plt.ylabel('acc')
         plt.xticks(history.epoch)
-        plt.plot(history.history['accuracy'], 'y', label='t acc')
-        plt.plot(history.history['val_accuracy'], 'r', label='v acc')
+        plt.plot(history.history['accuracy'], 'y', label='t acc', marker='.')
+        plt.plot(history.history['val_accuracy'], 'r', label='v acc', marker='.')
         plt.legend(loc='lower right')
         if save!=None:
             plt.savefig(save+'_acc')        
