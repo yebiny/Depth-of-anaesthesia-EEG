@@ -10,7 +10,7 @@ def draw_lhist(tag, llist, tlist=[], save=None):
     if tag=='l':
         ran, bins = (0,4), 4
     if tag=='y':
-        ran, bins = (0,1), 50
+        ran, bins = None, 50
 
     n = len(llist)
     fig = plt.figure(figsize=(4*n, 3))
