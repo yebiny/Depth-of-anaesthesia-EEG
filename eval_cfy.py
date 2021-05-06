@@ -5,6 +5,7 @@ from tensorflow.keras.models import load_model
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 import seaborn as sns
+from train_cfy import load_data
 class EVAL():
     
     def __init__(self, model_path, data_path):
@@ -13,12 +14,12 @@ class EVAL():
         self.data_path = data_path
 
     def load_data(self):
-        x_valid = np.load('%s/x_valid.npy'%self.data_path)
-        l_valid = np.load('%s/l_valid.npy'%self.data_path)
         x_train = np.load('%s/x_train.npy'%self.data_path)
         l_train = np.load('%s/l_train.npy'%self.data_path)
+        x_valid = np.load('%s/x_valid.npy'%self.data_path)
+        l_valid = np.load('%s/l_valid.npy'%self.data_path)
         
-        return x_valid, l_valid, x_train, l_train
+        return x_train, l_train, x_valid, l_valid
 
     def _draw_cm(self, y_true, y_pred, ax, title='Confusion matrix'):
         cm = metrics.confusion_matrix(y_true, y_pred)
@@ -32,17 +33,17 @@ class EVAL():
 
     def draw_multi_cm(self, save=None):
         
-        x_valid, l_valid, x_train, l_train = self.load_data()
+        x_train, l_train, x_valid, l_valid = self.load_data()
 
         plt.figure(figsize=(12,4))
         
-        l_pred = self.model.predict_classes(x_valid)
         ax = plt.subplot(1,2,1)
-        self._draw_cm(l_valid, l_pred, ax, title='Valid set')
-        
         l_pred = self.model.predict_classes(x_train)
-        ax = plt.subplot(1,2,2)
         self._draw_cm(l_train, l_pred, ax, title='Train set' )
+        
+        ax = plt.subplot(1,2,2)
+        l_pred = self.model.predict_classes(x_valid)
+        self._draw_cm(l_valid, l_pred, ax, title='Valid set')
         
         if save!=None:
             plt.savefig(save)
@@ -59,9 +60,6 @@ def main():
     
     ev = EVAL(model_path, data_path)
     ev.draw_multi_cm('%s/plot_cm'%model_path)    
-    #if ev.model.output.shape[1] == 1:
-    #    ev.draw_response('%s/plot_response'%model_path)
-    #    ev.draw_roc('%s/plot_roc'%model_path)
     
 
 if __name__=='__main__':
