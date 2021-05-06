@@ -72,7 +72,7 @@ def cfy2(xshape, n_class, optimizer):
     model.compile(optimizer, loss, metrics=['accuracy'])    
     return model
 
-def cfy3(xshape, n_class, optimizer):
+def dense1(xshape, n_class, optimizer):
     model = models.Sequential()
     model.add(layers.Input(shape=xshape))
 
@@ -82,7 +82,6 @@ def cfy3(xshape, n_class, optimizer):
 MODELS = {
     'cfy1': cfy1,
     'cfy2': cfy2,
-    'cfy3': cfy3,
 }
 
 
