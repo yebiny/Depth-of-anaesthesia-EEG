@@ -13,11 +13,14 @@ class EVAL():
         self.x_train, self.y_train, self.l_train = self.load_data('train')
         self.x_valid, self.y_valid, self.l_valid = self.load_data('valid')
 
-        self.y_pred = self.model.predict(self.x_valid)
+        self.y_pred = self.model.predict(self.x_train)
+        self.y_v_pred = self.model.predict(self.x_valid)
    
     def draw_reg(self, save):
         plt.figure(figsize=(6,6))
-        plt.scatter(self.y_valid, self.y_pred, alpha=0.6, marker='.')
+        plt.scatter(self.y_valid, self.y_v_pred, alpha=0.6, marker='.')
+        plt.xlabel("True")
+        plt.ylabel("Pred")
         if save!=None:
             plt.savefig(save)
         else: plt.show()
@@ -32,6 +35,7 @@ class EVAL():
             x = np.load('%s/x_train.npy'%self.data_path)
             y = np.load('%s/y_train.npy'%self.data_path)
             l = np.load('%s/l_train.npy'%self.data_path)
+        x=x/50
         return x, y, l
 
     def _draw_cm(self, y_true, y_pred, ax, title='Confusion matrix'):
@@ -51,8 +55,16 @@ class EVAL():
             if y<cut: l_pred.append(0)
             else: l_pred.append(1)
 
-        plt.figure(figsize=(6,4))
-        ax = plt.subplot(1,1,1)
+        plt.figure(figsize=(12,4))
+        ax = plt.subplot(1,2,1)
+        self._draw_cm(self.l_train, l_pred, ax, title='Train set')
+        
+        l_pred = []
+        for y in self.y_v_pred:
+            if y<cut: l_pred.append(0)
+            else: l_pred.append(1)
+        
+        ax = plt.subplot(1,2,2)
         self._draw_cm(self.l_valid, l_pred, ax, title='Valid set')
         
         if save!=None:
@@ -62,6 +74,7 @@ class EVAL():
 
 def main():
     model_path = sys.argv[1]
+    cm_cut = float(sys.argv[2])
     with open('%s/opt.pickle'%model_path, 'rb') as fr:
         opt = pickle.load(fr)
     data_path = opt['data_path']
@@ -70,10 +83,7 @@ def main():
     
     ev = EVAL(model_path, data_path)
     ev.draw_reg('%s/plot_reg'%model_path) 
-    ev.draw_multi_cm(0.428, '%s/plot_cm'%model_path)    
-#    if ev.model.output.shape[1] == 1:
-#        ev.draw_response('%s/plot_response'%model_path)
-#        ev.draw_roc('%s/plot_roc'%model_path)
+    ev.draw_multi_cm(cm_cut, '%s/plot_cm'%model_path)    
     
 
 if __name__=='__main__':
