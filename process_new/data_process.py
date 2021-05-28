@@ -1,150 +1,98 @@
 import numpy as np
-from PyEMD import EMD
-from scipy import signal
-import h5py
-import glob
+import random
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 class DataProcess():
+    def __init__(self, dset_path, xlen):
+        self.dset_path = dset_path
+        self.xlen = xlen
+        self.dset = np.load(dset_path)
+        print(self.dset.shape)
 
-    def __init__( self
-                , step_sec
-                , window_sec
-                , eeg_per_sec=125
-                , bis_per_sec=0.2):
-        
-        # setting
-        self.step_sec = step_sec 
-        self.window_sec = window_sec
-        self.eeg_per_sec = eeg_per_sec
-        self.bis_per_sec = bis_per_sec
-        
-        self.eeg_step = self.step_sec*self.eeg_per_sec
-        self.eeg_window = self.window_sec*self.eeg_per_sec
+    def plot_x(self, x, size=(16,4)):
+        plt.figure(figsize=size)
+        plt.plot(x, marker = 'o', alpha=0.4)
+        plt.show()
     
-    def get_eeg_bis_from_mat(self, mat_file):
-        f = h5py.File(mat_file, mode='r')
-        data={}
-        for a, b in f.items():
-            data[a]=np.array(b)
-        eeg = data['EEG'].ravel()
-        bis = data['bis'].ravel()
-        return eeg, bis
+    def hist_with_number(self,x,save_path=None, title=None):
+        classes = set(x)
         
-    def get_eeg_bis_time(self, eeg, bis):
-        eeg_tr, bis_tr = 1/self.eeg_per_sec, 1/self.bis_per_sec
+        figure = plt.figure(figsize=(8,6))
+        plt.hist( x
+                , range=(min(classes)-0.5,max(classes)+0.5)
+                , bins=len(classes)
+                , alpha=0.4
+                , rwidth=0.9)
+        plt.xticks(list(classes))
+    
+        n_classes=[]
+        for c in classes:
+            n_class = len(x[x==c])
+            n_classes.append(n_class)
+            plt.text(c,n_class,n_class,                 
+                     color='slateblue',
+                     fontweight='bold',
+                     horizontalalignment='center',  
+                     verticalalignment='bottom')
+        if title: plt.title(title)
+        if save_path: plt.savefig(save_path)
+        else: plt.show()
+        
+        return n_classes
 
-        bis_start = np.ceil(self.window_sec/bis_tr)*bis_tr
-        eeg_t = np.array([ eeg_tr*i for i in range(len(eeg)) ])
-        bis_t = np.array([ bis_tr*i+bis_start for i in range(len(bis)) ])
-        return eeg_t, bis_t
-    
-    def cut_eeg_evenly(self, x, t):
-        assert len(x)==len(t)
-        
-        x_out, t_out = [], []
-        n_step = int(np.trunc(len(x)/self.eeg_step))
-        for step in range(n_step):
-            start = step*self.eeg_step
-            x_cut = x[start:start+self.eeg_window]
-            t_cut = t[start:start+self.eeg_window]
-            if (len(x_cut)==(self.eeg_window)):
-                x_out.append(x_cut)
-                t_out.append(t_cut)
-    
-        return np.array(x_out), np.array(t_out)
-    
-    def process_eeg(self, x_arrs, t_data):
-        assert x_arrs.shape == t_data.shape
-    
-        x_out = []
-        for i, (x, t) in enumerate(zip(x_arrs, t_data)):
-            filter = signal.firwin(400, [0.01, 0.6], pass_zero=False)
-            x = signal.convolve(x, filter, mode='same')
-            x = EMD().emd(x, t)
-            x = x[0]+x[1]
-            x_out.append(x)
-    
-        return np.array(x_out)
-    
-    def process_norm(self, x_arrs):
-        size = x_arrs.shape[0]*x_arrs.shape[1]
-        x = np.reshape(x_arrs, (size))
-        mean = np.mean(x)
-        std = np.std(x)
-    
-        x_out = (x_arrs-mean)/std
-        return x_out
-    
-    def process_label(self, mat_file, bis, bis_t, x_data, t_data):
-        tr = 1/self.bis_per_sec
+    def subid_for_test(self, dset, subid):
+        dset_subid = dset[:,self.xlen]
+        dset_other, dset_target = dset[dset_subid!=subid], dset[dset_subid==subid]
 
-        x_out, y_out = [], []
-        subid = mat_file.split('case')[-1].split('.')[0]
-        for x, t in zip(x_data, t_data):
-            tend = np.ceil(t[-1]/tr)*tr
-            if tend in bis_t: 
-                y_out.append([int(subid), tend, bis[bis_t==tend][0]])
-                x_out.append(x)
-        return np.array(x_out), np.array(y_out)
-    
-    def process(self, mat_file):
+        return dset_other, dset_target
 
-        eeg, bis = self.get_eeg_bis_from_mat(mat_file)
-        eeg_t, bis_t = self.get_eeg_bis_time(eeg, bis)
-        print("0. data : ", eeg.shape, eeg_t.shape, bis.shape, bis_t.shape)
-        
-        x_data, t_data= self.cut_eeg_evenly(eeg, eeg_t)
-        print("1. cut data evenly: ", x_data.shape)
-        
-        x_data = self.process_eeg(x_data, t_data)
-        print("2. eeg filter and EMD: ", x_data.shape)
-        
-        x_data = self.process_norm(x_data)
-        print("3. Normalize : ", x_data.shape)
-        
-        x_data, y_data = self.process_label( mat_file
-                                           , bis, bis_t
-                                           , x_data, t_data) 
-        
-        dset = np.concatenate((x_data, y_data), axis=1)
-        
-        
-        return dset 
-   
     def rnd_choice(self, dset, mask, n, rs):
         dset_target, dset_other = dset[mask], dset[mask==False]
         dset_target, _ = train_test_split( dset_target, train_size=n
                                          , shuffle=True, random_state=rs)
         dset =  np.concatenate((dset_target, dset_other))
-        return dset 
+        return dset
+
+    def class_labeling(self):
+        dset_labeled=[]
+        for d in self.dset:
+            if d[-1]>20 and d[-1]<40:
+                d = np.append(d, 0)
+            elif d[-1]>=40 and d[-1]<65:
+                d = np.append(d, 1)
+            elif d[-1]>=65 and d[-1]<85:
+                d = np.append(d, 2)
+            elif d[-1]>=85:
+                d = np.append(d, 3)
+            else:
+                d = np.append(d, -1)
+            dset_labeled.append(d)
+        return np.array(dset_labeled)
+
+
 
 def main():
-
-    STEP_SEC = 2
-    WINDOW_SEC = 6
-    dp = DataProcess(STEP_SEC, WINDOW_SEC)
     
-    mat_list = glob.glob('../data/org/case*.mat')
+    SAVE_PATH = 'results_data/s1_w6'
+    dp = DataProcess('%s/eegset.npy'%SAVE_PATH, 6*125)
     
-    # process 
-    dset=[]
-    for mat in mat_list:
-        d = dp.process(mat)
-        dset.extend(d)
-        print(mat, d.shape, len(dset))
-        print("===========================")
-    dset = np.array(dset) 
-
-    # data number selection
-    mask = (dset[:,-1]>=30) & (dset[:,-1]<40) 
-    dset = dp.rnd_choice(dset, mask, 10000, rs=34)
-    mask = (dset[:,-1]>=40) & (dset[:,-1]<50) 
-    dset = dp.rnd_choice(dset, mask, 10000, rs=34)
- 
-    # save 
-    print("* Save ", dset.shape)
-    np.save("results_data/s2_w5/dset.npy", dset)
+    dset = dp.class_labeling()
+    dset = dset[dset[:,-1]!=-1]
+    dset, dset_real = dp.subid_for_test(dset, 5)
+    n_classes = dp.hist_with_number(dset[:,-1], SAVE_PATH+'/hist_bfrnd', title='dataset before rnd')  
+    _ = dp.hist_with_number(dset_real[:,-1], SAVE_PATH+'/hist_real', title='realset')  
+     
+    for i in range(2):
+        mask = dset[:,-1]==i
+        dset = dp.rnd_choice(dset, mask, n=np.min(n_classes), rs=34)
+    dset = np.array(dset, dtype='float32')
+    dset_real = np.array(dset_real, dtype='float32')
+    print(dset.shape, dset_real.shape)
+    
+    dp.hist_with_number(dset[:,-1], SAVE_PATH+'/hist_rnd', title='dataset after rnd')  
+    np.save("%s/dset.npy"%SAVE_PATH, dset)
+    np.save("%s/dset_real.npy"%SAVE_PATH, dset_real)
 
 if __name__ == '__main__':
     main()
