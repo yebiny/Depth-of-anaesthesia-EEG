@@ -2,7 +2,7 @@ import numpy as np
 from PyEMD import EMD
 from scipy import signal
 import h5py
-import glob, os
+import glob, os, sys
 from sklearn.model_selection import train_test_split
 
 class EEGProcess():
@@ -114,11 +114,11 @@ class EEGProcess():
    
 def main():
 
-    STEP_SEC = 2
-    WINDOW_SEC = 10
+    STEP_SEC = int(sys.argv[1])
+    WINDOW_SEC = int(sys.argv[2])
     ep = EEGProcess(STEP_SEC, WINDOW_SEC)
     
-    SAVE_PATH = 'results_data/s2_w10'
+    SAVE_PATH = 'results_data/s%i_w%i'%(STEP_SEC, WINDOW_SEC)
     if not os.path.isdir(SAVE_PATH): os.mkdir(SAVE_PATH)
     
     mat_list = glob.glob('../data/org/case*.mat')

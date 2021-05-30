@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 import random
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -74,8 +75,9 @@ class DataProcess():
 
 def main():
     
-    SAVE_PATH = 'results_data/s1_w6'
-    dp = DataProcess('%s/eegset.npy'%SAVE_PATH, 6*125)
+    SAVE_PATH = sys.argv[1]
+    DATA_SEC = int(sys.argv[2])
+    dp = DataProcess('%s/eegset.npy'%SAVE_PATH, DATA_SEC*125)
     
     dset = dp.class_labeling()
     dset = dset[dset[:,-1]!=-1]
