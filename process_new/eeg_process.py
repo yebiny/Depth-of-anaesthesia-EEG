@@ -39,13 +39,14 @@ class EEGProcess():
         bis_t = np.array([ bis_tr*i+bis_start for i in range(len(bis)) ])
         return eeg_t, bis_t
     
-    def cut_eeg_evenly(self, x, t):
+    def cut_eeg_evenly(self, x, t, eeg_step=None):
         assert len(x)==len(t)
         
+        if not eeg_step: eeg_step = self.eeg_step
         x_out, t_out = [], []
-        n_step = int(np.trunc(len(x)/self.eeg_step))
+        n_step = int(np.trunc(len(x)/eeg_step))
         for step in range(n_step):
-            start = step*self.eeg_step
+            start = step*eeg_step
             x_cut = x[start:start+self.eeg_window]
             t_cut = t[start:start+self.eeg_window]
             if (len(x_cut)==(self.eeg_window)):
@@ -67,15 +68,6 @@ class EEGProcess():
     
         return np.array(x_out)
     
-    def process_norm(self, x_arrs):
-        size = x_arrs.shape[0]*x_arrs.shape[1]
-        x = np.reshape(x_arrs, (size))
-        mean = np.mean(x)
-        std = np.std(x)
-    
-        x_out = (x_arrs-mean)/std
-        return x_out
-    
     def process_label(self, mat_file, bis, bis_t, x_data, t_data):
         tr = 1/self.bis_per_sec
 
@@ -88,20 +80,17 @@ class EEGProcess():
                 x_out.append(x)
         return np.array(x_out), np.array(y_out)
     
-    def process(self, mat_file):
+    def process(self, mat_file, eeg_step=None):
 
         eeg, bis = self.get_eeg_bis_from_mat(mat_file)
         eeg_t, bis_t = self.get_eeg_bis_time(eeg, bis)
         print("0. data : ", eeg.shape, eeg_t.shape, bis.shape, bis_t.shape)
         
-        x_data, t_data= self.cut_eeg_evenly(eeg, eeg_t)
+        x_data, t_data= self.cut_eeg_evenly(eeg, eeg_t, eeg_step=eeg_step)
         print("1. cut data evenly: ", x_data.shape)
         
         x_data = self.process_eeg(x_data, t_data)
         print("2. eeg filter and EMD: ", x_data.shape)
-        
-        x_data = self.process_norm(x_data)
-        print("3. Normalize : ", x_data.shape)
         
         x_data, y_data = self.process_label( mat_file
                                            , bis, bis_t
@@ -131,10 +120,8 @@ def main():
         print(mat, d.shape, len(eegset))
         print("===========================")
     eegset = np.array(eegset) 
-
-    # save 
-    print("* Save ", eegset.shape)
     np.save("%s/eegset.npy"%SAVE_PATH, eegset)
+    print("* Save ", eegset.shape)
 
 if __name__ == '__main__':
     main()
