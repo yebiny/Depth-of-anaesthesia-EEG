@@ -17,29 +17,18 @@ def set_save_path(opt):
     if not os.path.isdir(save_path): os.mkdir(save_path)
     return save_path
 
-def _load_data(data_path):
-    x_train = np.load("%s/x_train.npy"%data_path)
-    y_train = np.load("%s/y_train.npy"%data_path)
-    x_valid = np.load("%s/x_valid.npy"%data_path)
-    y_valid = np.load("%s/y_valid.npy"%data_path)
-    #x_train, x_valid = np.expand_dims(x_train, 2), np.expand_dims(x_valid, 2)
-    print(x_train.shape, x_valid.shape)
-    x_train, x_valid = x_train/50, x_valid/50
-    return x_train, y_train, x_valid, y_valid
-
-def train(opt):
+def train(opt, x_data, y_data):
     save_path = set_save_path(opt) 
     with open('%s/opt.pickle'%save_path,'wb') as fw:
         pickle.dump(opt, fw) 
 
     # load data
-    ld = LoadDataset(opt['data_path'], opt['xlen'])
-    x_list, y_list = ld.process_for_cfy()
-    x_train, x_valid = x_list[:2]
-    y_train, y_valid = y_list[:2]
+    x_train, x_valid, y_train, y_valid = train_test_split( x_data, y_data
+                                                         , test_size=0.15
+                                                         , shuffle=True
+                                                         , random_state=34)
 
-    print('trainset: ', x_train.shape, y_train.shape)
-    print('validset: ', x_valid.shape, y_valid.shape)
+    print(x_train.shape, y_train.shape, x_valid.shape, y_valid.shape)
 
     # load model
     if opt['model_name'] in MODELS:
@@ -53,25 +42,33 @@ def train(opt):
     early_stop = EarlyStopping(monitor='val_loss', patience=10)
     
     # train 
-    history = model.fit(x_train, y_train ,
+    history = model.fit(x_train, y_train,
                     batch_size=opt['batch_size'], epochs=opt['epochs'],
                     validation_data=(x_valid, y_valid),
-                    #class_weight=np.array(opt['class_weights']),
+                    class_weight=np.array(opt['class_weights']),
                     callbacks = [reduce_lr, checkpoint, early_stop])
 
     # draw learning process
     draw_lprocess(history, save='%s/plot_lprocess'%save_path)
 
-def set_option(model_name, data_path, x_sec):
+def set_option( model_name, x_path, y_path, mask, ch
+              , epochs=100
+              , weights=[1,1,1,1]
+              , batch_size=16
+              , optimizer='adam'
+              , nclass=4):
+    
     option={
     'model_name': model_name,
-    'data_path' : data_path,
-    'xlen': 125*int(x_sec),
-    'epochs': 100,
-    #'class_weights' : [0.4,0.4, 1, 0.9],
-    'batch_size' : 16,
-    'optimizer' : 'adam',
-    'nclass':4
+    'x_path': x_path,
+    'y_path': y_path,
+    'mask': mask,
+    'ch': ch,
+    'epochs': epochs,
+    'class_weights' : weights,
+    'batch_size' : batch_size,
+    'optimizer' : optimizer,
+    'nclass': nclass
     }
 
     return option
@@ -79,13 +76,17 @@ def set_option(model_name, data_path, x_sec):
 def main():
     
     model_name= sys.argv[1]
-    data_path = sys.argv[2]
-    x_sec = sys.argv[3]
 
-    opt = set_option(model_name, data_path, x_sec)
-
+    x_path = 'datasets_0708/try3/x_imfs.npy'
+    y_path = 'datasets_0708/try3/y_data.npy'
+    mask_path = 'datasets_0708/try3/mask_train_aug.npy'
+    ch = 'concat'
+    x_data, y_data = generate_datasets(x_path, y_path, mask_path, ch=ch)
+    
+    opt = set_option( model_name, x_path, y_path, mask_path, ch
+                    , batch_size=16, weights=[0.7,0.8,1,1])
     print(opt)
-    train(opt)
+    train(opt, x_data, y_data)
     
 if __name__=='__main__':
     main()

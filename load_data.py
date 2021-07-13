@@ -1,33 +1,45 @@
 import numpy as np
-import random
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-  
-class LoadDataset():
-    def __init__(self, dset_path, xlen ):
-        self.dset_path = dset_path
-        self.xlen = xlen
 
-    def train_valid_test_split(self, dset, vsize, tsize, rs):
-        dset, dset_v = train_test_split( dset, test_size=vsize
-                                       , shuffle=True, random_state=rs)
-        dset_v, dset_t = train_test_split(dset_v, test_size=tsize, shuffle=False)
+def get_ch(x_imfs, ch):
+    x_ch = x_imfs[:,ch,:]
+    x_ch = np.expand_dims(x_ch, 2)
+    x_ch = (x_ch-np.mean(x_ch))/np.std(x_ch)
     
-        return dset, dset_v, dset_t
-    
-    def process_for_cfy(self, vsize=0.2, tsize=0.1, rs = 34):
-        dset = np.load(self.dset_path)
-        dset_r = np.load(self.dset_path)
+    return x_ch
 
-        dset, dset_v, dset_t = self.train_valid_test_split(dset, vsize,tsize, rs)
-        
-        x_list, y_list = [], []
-        for d in [dset, dset_v, dset_t, dset_r]:
-            x, y = d[:,:self.xlen], d[:,-1]      
-            x = np.expand_dims(x, 2)
-            x = np.array(x, dtype='float32')
-            y = np.array(y, dtype='int')
-            x_list.append(x)
-            y_list.append(y)
+def get_ch_add(x_imfs):
+    x_ch0 = get_ch(x_imfs, 0)
+    x_ch1 = get_ch(x_imfs, 1)
+    x_ch_add = (x_ch0+x_ch1)/2
     
-        return x_list, y_list 
+    return x_ch_add
+
+def get_ch_concat(x_imfs):
+    x_ch0 = get_ch(x_imfs, 0)
+    x_ch1 = get_ch(x_imfs, 1)
+    x_ch_concat = np.concatenate((x_ch0, x_ch1), axis=2)
+
+    return x_ch_concat
+
+def generate_datasets(x_path, y_path, mask_path, ch, valid_size=0.15):
+    x_data = np.load(x_path) 
+    y_data = np.load(y_path)[:,-1]
+    mask = np.load(mask_path)
+    print('* load dataset: ', x_data.shape, y_data.shape)
+    
+    x_data, y_data = x_data[mask], y_data[mask]
+    print('* masked dataset: ', x_data.shape, y_data.shape)
+    
+    if type(ch)==int:
+        x_data = get_ch(x_data, ch)
+    else:
+        if ch=='add':
+            x_data=get_ch_add(x_data)
+        elif ch=='concat':
+            x_data=get_ch_concat(x_data)
+        else:
+            print('channel not valid')
+    print('* final dataset: ', x_data.shape, y_data.shape)
+    
+    return x_data, y_data 
