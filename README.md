@@ -1,6 +1,13 @@
 # DenpthOfAnaesthesia_eeg
 
-## Dataset
 
 ## Purpose
 
+## Dataset
+
+
+## Preprocess
+
+## Model
+
+## Results
