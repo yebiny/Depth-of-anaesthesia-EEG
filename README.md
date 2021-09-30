@@ -11,5 +11,6 @@
 ## Preprocess
 
 ## Model
+* WaveNet https://arxiv.org/abs/1609.03499
 
 ## Results
