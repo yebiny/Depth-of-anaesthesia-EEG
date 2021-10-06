@@ -8,7 +8,10 @@
 * sampling rate
 * BIS : 1/5sec
 * EEG : 125/1sec
+
 ## Preprocess
+* window size: 10 sec
+* 
 
 ## Model
 * WaveNet https://arxiv.org/abs/1609.03499
