@@ -11,7 +11,7 @@
 
 ## Preprocess
 * window size: 10 sec
-* 
+* step size: 5 sec (for BIS sampling rate ) 
 
 ## Model
 * WaveNet https://arxiv.org/abs/1609.03499
